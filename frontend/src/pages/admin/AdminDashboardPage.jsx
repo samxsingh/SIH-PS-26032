@@ -173,35 +173,35 @@ export const AdminDashboardPage = () => {
         {/* 8 Core Government KPI Overview Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 mb-6 animate-fade-slide">
           <div className="bg-white rounded-md border-2 border-dark-neutral border-l-6 border-l-forest-green p-3 shadow-brutal-sm">
-            <span className="text-[9px] font-black uppercase tracking-wider text-dark-neutral-muted block">Active Centres</span>
+            <span className="text-[9px] font-black uppercase tracking-wider text-dark-neutral-muted block">{t('admin.kpi_active_centres', 'Active Centres')}</span>
             <h3 className="text-lg font-black text-forest-green mt-0.5">{kpis.activeCentresCount || 4}</h3>
           </div>
           <div className="bg-white rounded-md border-2 border-dark-neutral border-l-6 border-l-amber-500 p-3 shadow-brutal-sm">
-            <span className="text-[9px] font-black uppercase tracking-wider text-dark-neutral-muted block">Farmers Waiting</span>
+            <span className="text-[9px] font-black uppercase tracking-wider text-dark-neutral-muted block">{t('admin.kpi_farmers_waiting', 'Farmers Waiting')}</span>
             <h3 className="text-lg font-black text-amber-700 mt-0.5">{kpis.totalWaitingFarmers || 0}</h3>
           </div>
           <div className="bg-white rounded-md border-2 border-dark-neutral border-l-6 border-l-blue-500 p-3 shadow-brutal-sm">
-            <span className="text-[9px] font-black uppercase tracking-wider text-dark-neutral-muted block">Being Served</span>
+            <span className="text-[9px] font-black uppercase tracking-wider text-dark-neutral-muted block">{t('admin.kpi_being_served', 'Being Served')}</span>
             <h3 className="text-lg font-black text-info-blue mt-0.5">{kpis.totalServingFarmers || 0}</h3>
           </div>
           <div className="bg-white rounded-md border-2 border-dark-neutral border-l-6 border-l-emerald-600 p-3 shadow-brutal-sm">
-            <span className="text-[9px] font-black uppercase tracking-wider text-dark-neutral-muted block">Completed Today</span>
+            <span className="text-[9px] font-black uppercase tracking-wider text-dark-neutral-muted block">{t('admin.kpi_completed_today', 'Completed Today')}</span>
             <h3 className="text-lg font-black text-emerald-800 mt-0.5">{kpis.totalCompletedToday || 0}</h3>
           </div>
           <div className="bg-white rounded-md border-2 border-dark-neutral border-l-6 border-l-wheat-accent p-3 shadow-brutal-sm">
-            <span className="text-[9px] font-black uppercase tracking-wider text-dark-neutral-muted block">Procured (Qtl)</span>
+            <span className="text-[9px] font-black uppercase tracking-wider text-dark-neutral-muted block">{t('admin.kpi_procured_qtl', 'Procured (Qtl)')}</span>
             <h3 className="text-lg font-black text-dark-neutral mt-0.5 font-mono">{(kpis.totalProcuredQuantityQuintals || 0).toLocaleString('en-IN')}</h3>
           </div>
           <div className="bg-white rounded-md border-2 border-dark-neutral border-l-6 border-l-purple-500 p-3 shadow-brutal-sm">
-            <span className="text-[9px] font-black uppercase tracking-wider text-dark-neutral-muted block">Payable Value</span>
+            <span className="text-[9px] font-black uppercase tracking-wider text-dark-neutral-muted block">{t('admin.kpi_payable_value', 'Payable Value')}</span>
             <h3 className="text-lg font-black text-purple-700 mt-0.5 font-mono">₹{(kpis.totalProcuredValueRs || 0).toLocaleString('en-IN')}</h3>
           </div>
           <div className="bg-white rounded-md border-2 border-dark-neutral border-l-6 border-l-indigo-500 p-3 shadow-brutal-sm">
-            <span className="text-[9px] font-black uppercase tracking-wider text-dark-neutral-muted block">Payments Active</span>
+            <span className="text-[9px] font-black uppercase tracking-wider text-dark-neutral-muted block">{t('admin.kpi_payments_active', 'Payments Active')}</span>
             <h3 className="text-lg font-black text-indigo-700 mt-0.5">{kpis.paymentsProcessingCount || 0}</h3>
           </div>
           <div className="bg-white rounded-md border-2 border-dark-neutral border-l-6 border-l-red-500 p-3 shadow-brutal-sm">
-            <span className="text-[9px] font-black uppercase tracking-wider text-dark-neutral-muted block">Needing Attention</span>
+            <span className="text-[9px] font-black uppercase tracking-wider text-dark-neutral-muted block">{t('admin.kpi_needing_attention', 'Needing Attention')}</span>
             <h3 className="text-lg font-black text-red-600 mt-0.5">{kpis.centresNeedingAttentionCount || 0}</h3>
           </div>
         </div>
@@ -217,7 +217,7 @@ export const AdminDashboardPage = () => {
             }`}
           >
             <Activity className="w-4 h-4" />
-            <span>Centre Operations Map & List</span>
+            <span>{t('admin.tab_operations_map', 'Centre Operations Map & List')}</span>
           </button>
 
           <button
@@ -229,7 +229,7 @@ export const AdminDashboardPage = () => {
             }`}
           >
             <BarChart3 className="w-4 h-4" />
-            <span>Crop & Payment Analytics</span>
+            <span>{t('admin.tab_analytics', 'Crop & Payment Analytics')}</span>
           </button>
 
           <button
@@ -241,7 +241,7 @@ export const AdminDashboardPage = () => {
             }`}
           >
             <FileText className="w-4 h-4" />
-            <span>Compliance Audit Log</span>
+            <span>{t('admin.tab_audit', 'Compliance Audit Log')}</span>
           </button>
 
           <button
@@ -253,7 +253,7 @@ export const AdminDashboardPage = () => {
             }`}
           >
             <FileCheck className="w-4 h-4" />
-            <span>Procurement Centre Applications</span>
+            <span>{t('admin.tab_verifications', 'Procurement Centre Applications')}</span>
           </button>
         </div>
 

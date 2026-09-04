@@ -28,15 +28,15 @@ import {
   CheckCircle2
 } from 'lucide-react';
 
-const OPERATIONAL_STAGES = [
-  { key: 'BOOKED', label: '1. Booked', short: 'Booked', desc: 'Slot confirmed. Your delivery appointment is reserved.' },
-  { key: 'ARRIVED', label: '2. Arrived', short: 'Arrived', desc: 'Checked in at the procurement centre security gate.' },
-  { key: 'IN QUEUE', label: '3. In Queue', short: 'In Queue', desc: 'Token active in intake line waiting for inspection counter.' },
-  { key: 'QUALITY CHECK', label: '4. Quality Check', short: 'Quality', desc: 'Moisture and FAQ grain standards under verification.' },
-  { key: 'WEIGHING', label: '5. Weighing', short: 'Weighing', desc: 'Vehicle gross weight recorded on certified weighbridge.' },
-  { key: 'PROCUREMENT COMPLETE', label: '6. Procurement', short: 'Procured', desc: 'Produce accepted and procurement receipt generated.' },
-  { key: 'PAYMENT PROCESSING', label: '7. Payment', short: 'Payment', desc: 'Direct Benefit Transfer (DBT) settlement initiated.' },
-  { key: 'COMPLETED', label: '8. Completed', short: 'Completed', desc: 'Procurement complete and funds credited to bank account.' }
+const getOperationalStages = (t) => [
+  { key: 'BOOKED', short: t('farmer.stage_booked_short', 'Booked'), desc: t('farmer.stage_booked_desc', 'Slot confirmed. Your delivery appointment is reserved.') },
+  { key: 'ARRIVED', short: t('farmer.stage_arrived_short', 'Arrived'), desc: t('farmer.stage_arrived_desc', 'Checked in at the procurement centre security gate.') },
+  { key: 'IN QUEUE', short: t('farmer.stage_in_queue_short', 'In Queue'), desc: t('farmer.stage_in_queue_desc', 'Token active in intake line waiting for inspection counter.') },
+  { key: 'QUALITY CHECK', short: t('farmer.stage_quality_check_short', 'Quality'), desc: t('farmer.stage_quality_check_desc', 'Moisture and FAQ grain standards under verification.') },
+  { key: 'WEIGHING', short: t('farmer.stage_weighing_short', 'Weighing'), desc: t('farmer.stage_weighing_desc', 'Vehicle gross weight recorded on certified weighbridge.') },
+  { key: 'PROCUREMENT COMPLETE', short: t('farmer.stage_procurement_short', 'Procured'), desc: t('farmer.stage_procurement_desc', 'Produce accepted and procurement receipt generated.') },
+  { key: 'PAYMENT PROCESSING', short: t('farmer.stage_payment_short', 'Payment'), desc: t('farmer.stage_payment_desc', 'Direct Benefit Transfer (DBT) settlement initiated.') },
+  { key: 'COMPLETED', short: t('farmer.stage_completed_short', 'Completed'), desc: t('farmer.stage_completed_desc', 'Procurement complete and funds credited to bank account.') }
 ];
 
 const getBookingStageIndex = (operationalStatus, bookingStatus) => {
@@ -57,6 +57,7 @@ const getBookingStageIndex = (operationalStatus, bookingStatus) => {
 export const MyBookingsPage = () => {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const operationalStages = getOperationalStages(t);
 
   const [bookings, setBookings] = useState([]);
   const [activeTab, setActiveTab] = useState('UPCOMING'); // 'UPCOMING' | 'HISTORY'
@@ -322,16 +323,19 @@ export const MyBookingsPage = () => {
                 <div className="my-3 p-3.5 bg-warm-ivory/70 border-2 border-dark-neutral rounded-xs shadow-[2px_2px_0px_#22252A]">
                   <div className="flex items-center justify-between gap-2 mb-2">
                     <span className="text-[10px] font-black uppercase tracking-wider text-dark-neutral">
-                      8-Stage Procurement Workflow Tracker
+                      {t('farmer.workflow_tracker_title', '8-Stage Procurement Workflow Tracker')}
                     </span>
                     <span className="text-[10px] font-bold text-forest-green">
-                      Stage {getBookingStageIndex(booking.operationalStatus, booking.bookingStatus) + 1} of 8: {OPERATIONAL_STAGES[getBookingStageIndex(booking.operationalStatus, booking.bookingStatus)].short}
+                      {t('farmer.stage_of_8', {
+                        current: getBookingStageIndex(booking.operationalStatus, booking.bookingStatus) + 1,
+                        label: operationalStages[getBookingStageIndex(booking.operationalStatus, booking.bookingStatus)].short
+                      })}
                     </span>
                   </div>
 
                   {/* Visual Steps Grid */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-1.5">
-                    {OPERATIONAL_STAGES.map((stg, sIdx) => {
+                    {operationalStages.map((stg, sIdx) => {
                       const curIdx = getBookingStageIndex(booking.operationalStatus, booking.bookingStatus);
                       const isPassed = sIdx < curIdx;
                       const isCurrent = sIdx === curIdx;
@@ -363,10 +367,10 @@ export const MyBookingsPage = () => {
                   {/* Non-Technical Stage Explanation Box */}
                   <div className="mt-2.5 p-2 bg-white rounded-xs border border-dark-neutral text-[11px] flex items-center justify-between gap-2">
                     <span className="text-dark-neutral">
-                      <strong>Current Step:</strong> {OPERATIONAL_STAGES[getBookingStageIndex(booking.operationalStatus, booking.bookingStatus)].desc}
+                      <strong>{t('farmer.current_step_label', 'Current Step')}:</strong> {operationalStages[getBookingStageIndex(booking.operationalStatus, booking.bookingStatus)].desc}
                     </span>
                     <span className="px-2 py-0.5 bg-forest-green-light border border-forest-green text-forest-green font-black text-[10px] uppercase rounded-xs shrink-0">
-                      Live
+                      {t('farmer.live_badge', 'Live')}
                     </span>
                   </div>
                 </div>

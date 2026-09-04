@@ -6,8 +6,8 @@ import Badge from './Badge';
 export const StatusIndicator = ({ status = 'WAITING', label, size = 'md' }) => {
   const { t } = useTranslation();
 
-  const keyLower = (status || 'waiting').toLowerCase();
-  const localizedLabel = label || t(`status.${keyLower}`, status);
+  const normalizedKey = (status || 'waiting').toLowerCase().replace(/[\s-]+/g, '_');
+  const localizedLabel = label || t(`status.${normalizedKey}`, status);
 
   const getVariantAndIcon = (st) => {
     switch (st?.toUpperCase()) {

@@ -459,7 +459,7 @@ export const StaffDashboardPage = () => {
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-forest-green bg-forest-green-light px-2 py-0.5 rounded-xs border border-dark-neutral shadow-[1px_1px_0px_#22252A]">
-                  PROCUREMENT CENTRE (PRIMARY OPERATIONAL ENTITY)
+                  {t('staff.centre_entity_label', 'PROCUREMENT CENTRE')}
                 </span>
                 <span className="text-xs font-bold text-dark-neutral-muted">•</span>
                 <span className="text-[10px] sm:text-xs font-mono font-bold text-dark-neutral">
@@ -467,20 +467,20 @@ export const StaffDashboardPage = () => {
                 </span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-black font-heading tracking-tight text-dark-neutral">
-                Good morning, {centreDisplayName}
+                {t('staff.greeting_centre', { centreName: centreDisplayName })}
               </h1>
               <p className="text-xs text-dark-neutral-muted font-medium mt-1">
-                Official Department of Consumer Affairs Procurement Centre • Lucknow, Uttar Pradesh
+                {t('staff.title', 'Procurement Centre Operations')} • {centreProfile?.district || 'Lucknow'}, {centreProfile?.state || 'Uttar Pradesh'}
               </p>
             </div>
 
             <div className="flex items-center gap-3 flex-wrap">
               <Badge variant="success" size="lg" icon={ShieldCheck}>
-                ACTIVE / VERIFIED
+                {t('common.status_active_verified', 'ACTIVE / VERIFIED')}
               </Badge>
 
               <Badge variant={isConnected ? 'success' : 'warning'} icon={Radio}>
-                {isConnected ? 'Live Socket Connected' : 'Reconnecting...'}
+                {isConnected ? t('farmer.live_updates_connected', 'Live Socket Connected') : t('farmer.live_updates_reconnecting', 'Reconnecting...')}
               </Badge>
 
               <Button
@@ -494,7 +494,7 @@ export const StaffDashboardPage = () => {
                 className="text-xs font-bold"
               >
                 <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
-                <span>Sync All</span>
+                <span>{t('common.refresh', 'Sync All')}</span>
               </Button>
             </div>
           </div>
@@ -503,7 +503,7 @@ export const StaffDashboardPage = () => {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t-2 border-dark-neutral/10 text-xs">
             <div className="p-2.5 bg-warm-ivory rounded-xs border-2 border-dark-neutral shadow-[2px_2px_0px_#22252A]">
               <span className="text-[10px] font-bold text-dark-neutral-muted uppercase tracking-wider block">
-                Procurement Centre
+                {t('staff.centre_entity_label', 'Procurement Centre')}
               </span>
               <span className="font-black text-dark-neutral truncate block mt-0.5">
                 {centreDisplayName}
@@ -512,7 +512,7 @@ export const StaffDashboardPage = () => {
 
             <div className="p-2.5 bg-warm-ivory rounded-xs border-2 border-dark-neutral shadow-[2px_2px_0px_#22252A]">
               <span className="text-[10px] font-bold text-dark-neutral-muted uppercase tracking-wider block">
-                Centre ID
+                {t('staff.centre_id_label', 'Centre ID')}
               </span>
               <span className="font-mono font-black text-forest-green block mt-0.5">
                 {centreIdCode}
@@ -521,7 +521,7 @@ export const StaffDashboardPage = () => {
 
             <div className="p-2.5 bg-warm-ivory rounded-xs border-2 border-dark-neutral shadow-[2px_2px_0px_#22252A]">
               <span className="text-[10px] font-bold text-dark-neutral-muted uppercase tracking-wider block">
-                Appointed Head
+                {t('staff.appointed_head_label', 'Appointed Head')}
               </span>
               <span className="font-black text-dark-neutral block mt-0.5">
                 {appointedHeadName}
@@ -530,10 +530,10 @@ export const StaffDashboardPage = () => {
 
             <div className="p-2.5 bg-warm-ivory rounded-xs border-2 border-dark-neutral shadow-[2px_2px_0px_#22252A]">
               <span className="text-[10px] font-bold text-dark-neutral-muted uppercase tracking-wider block">
-                Staff Members
+                {t('staff.table_assigned_staff', 'Staff Members')}
               </span>
               <span className="font-black text-blue-700 block mt-0.5">
-                {(centreProfile?.activeStaffCount || staffList.length || 6)} Active Personnel
+                {t('staff.staff_members_count', { count: (centreProfile?.activeStaffCount || staffList.length || 6) })}
               </span>
             </div>
           </div>
@@ -545,8 +545,8 @@ export const StaffDashboardPage = () => {
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5 mb-6">
           {/* 1. Today's Bookings */}
           <div className="bg-white rounded-xs border-2 border-dark-neutral p-3 shadow-brutal-sm">
-            <span className="text-[10px] font-black uppercase tracking-wider text-dark-neutral-muted block">
-              Today's Bookings
+            <span className="text-[10px] font-black uppercase tracking-wider text-dark-neutral-muted block truncate">
+              {t('staff.kpi_today_bookings', "Today's Bookings")}
             </span>
             <div className="flex items-center justify-between mt-1">
               <span className="text-xl font-black text-dark-neutral">
@@ -558,8 +558,8 @@ export const StaffDashboardPage = () => {
 
           {/* 2. Farmers Waiting */}
           <div className="bg-white rounded-xs border-2 border-dark-neutral p-3 shadow-brutal-sm">
-            <span className="text-[10px] font-black uppercase tracking-wider text-dark-neutral-muted block">
-              Farmers Waiting
+            <span className="text-[10px] font-black uppercase tracking-wider text-dark-neutral-muted block truncate">
+              {t('staff.kpi_farmers_waiting', 'Farmers Waiting')}
             </span>
             <div className="flex items-center justify-between mt-1">
               <span className="text-xl font-black text-amber-700">
@@ -571,8 +571,8 @@ export const StaffDashboardPage = () => {
 
           {/* 3. Available Slots */}
           <div className="bg-white rounded-xs border-2 border-dark-neutral p-3 shadow-brutal-sm">
-            <span className="text-[10px] font-black uppercase tracking-wider text-dark-neutral-muted block">
-              Available Slots
+            <span className="text-[10px] font-black uppercase tracking-wider text-dark-neutral-muted block truncate">
+              {t('staff.kpi_available_slots', 'Available Slots')}
             </span>
             <div className="flex items-center justify-between mt-1">
               <span className="text-xl font-black text-forest-green">
@@ -584,8 +584,8 @@ export const StaffDashboardPage = () => {
 
           {/* 4. Current Queue */}
           <div className="bg-white rounded-xs border-2 border-dark-neutral p-3 shadow-brutal-sm">
-            <span className="text-[10px] font-black uppercase tracking-wider text-dark-neutral-muted block">
-              Current Queue
+            <span className="text-[10px] font-black uppercase tracking-wider text-dark-neutral-muted block truncate">
+              {t('staff.kpi_current_queue', 'Current Queue')}
             </span>
             <div className="flex items-center justify-between mt-1">
               <span className="text-xl font-black text-info-blue">
@@ -597,8 +597,8 @@ export const StaffDashboardPage = () => {
 
           {/* 5. Total Staff */}
           <div className="bg-white rounded-xs border-2 border-dark-neutral p-3 shadow-brutal-sm">
-            <span className="text-[10px] font-black uppercase tracking-wider text-dark-neutral-muted block">
-              Total Staff
+            <span className="text-[10px] font-black uppercase tracking-wider text-dark-neutral-muted block truncate">
+              {t('staff.kpi_total_staff', 'Total Staff')}
             </span>
             <div className="flex items-center justify-between mt-1">
               <span className="text-xl font-black text-dark-neutral">
@@ -610,8 +610,8 @@ export const StaffDashboardPage = () => {
 
           {/* 6. Completed Procurement */}
           <div className="bg-white rounded-xs border-2 border-dark-neutral p-3 shadow-brutal-sm">
-            <span className="text-[10px] font-black uppercase tracking-wider text-dark-neutral-muted block">
-              Completed
+            <span className="text-[10px] font-black uppercase tracking-wider text-dark-neutral-muted block truncate">
+              {t('staff.kpi_completed_procurement', 'Completed')}
             </span>
             <div className="flex items-center justify-between mt-1">
               <span className="text-xl font-black text-forest-green">
@@ -623,8 +623,8 @@ export const StaffDashboardPage = () => {
 
           {/* 7. Pending Quality Inspections */}
           <div className="bg-white rounded-xs border-2 border-dark-neutral p-3 shadow-brutal-sm">
-            <span className="text-[10px] font-black uppercase tracking-wider text-dark-neutral-muted block">
-              Pending Quality
+            <span className="text-[10px] font-black uppercase tracking-wider text-dark-neutral-muted block truncate">
+              {t('staff.kpi_pending_quality', 'Pending Quality')}
             </span>
             <div className="flex items-center justify-between mt-1">
               <span className="text-xl font-black text-yellow-700">
@@ -636,8 +636,8 @@ export const StaffDashboardPage = () => {
 
           {/* 8. Pending Payments */}
           <div className="bg-white rounded-xs border-2 border-dark-neutral p-3 shadow-brutal-sm">
-            <span className="text-[10px] font-black uppercase tracking-wider text-dark-neutral-muted block">
-              Pending Payment
+            <span className="text-[10px] font-black uppercase tracking-wider text-dark-neutral-muted block truncate">
+              {t('staff.kpi_pending_payment', 'Pending Payment')}
             </span>
             <div className="flex items-center justify-between mt-1">
               <span className="text-xl font-black text-purple-700">
@@ -696,7 +696,7 @@ export const StaffDashboardPage = () => {
           <div className="space-y-6 animate-step-enter">
             {/* 1. Today's Operations Booking Table */}
             <Card
-              title="Today's Operational Bookings & Live Processing"
+              title={t('staff.table_title', "Today's Operational Bookings & Live Processing")}
               accentBorder
               shadow="normal"
               actions={
@@ -718,30 +718,30 @@ export const StaffDashboardPage = () => {
                     className="text-xs font-bold"
                   >
                     <ArrowRightCircle className="w-3.5 h-3.5 mr-1" />
-                    <span>Call Next</span>
+                    <span>{t('staff.call_next', 'Call Next')}</span>
                   </Button>
                 </div>
               }
             >
               {isLoadingBookings ? (
-                <LoadingState message="Loading today's operational bookings..." />
+                <LoadingState message={t('staff.loading_bookings', "Loading today's operational bookings...")} />
               ) : todayBookings.length === 0 ? (
                 <div className="text-center py-10 text-dark-neutral-muted">
-                  <p className="text-sm font-bold">No delivery bookings scheduled for today.</p>
+                  <p className="text-sm font-bold">{t('staff.no_bookings', 'No delivery bookings scheduled for today.')}</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto -mx-5 -mb-5">
                   <table className="w-full text-left text-xs border-t-2 border-dark-neutral">
                     <thead className="bg-warm-ivory text-dark-neutral font-black uppercase text-[10px] tracking-wider border-b-2 border-dark-neutral">
                       <tr>
-                        <th className="py-3 px-4">Token</th>
-                        <th className="py-3 px-4">Farmer</th>
-                        <th className="py-3 px-4">Time</th>
-                        <th className="py-3 px-4">Crop</th>
-                        <th className="py-3 px-4">Quantity</th>
-                        <th className="py-3 px-4">Assigned Staff</th>
-                        <th className="py-3 px-4">Status</th>
-                        <th className="py-3 px-4">Update Status</th>
+                        <th className="py-3 px-4">{t('staff.table_token', 'Token')}</th>
+                        <th className="py-3 px-4">{t('staff.table_farmer', 'Farmer')}</th>
+                        <th className="py-3 px-4">{t('staff.table_time', 'Time')}</th>
+                        <th className="py-3 px-4">{t('staff.table_crop', 'Crop')}</th>
+                        <th className="py-3 px-4">{t('staff.table_quantity', 'Quantity')}</th>
+                        <th className="py-3 px-4">{t('staff.table_assigned_staff', 'Assigned Staff')}</th>
+                        <th className="py-3 px-4">{t('staff.table_status', 'Status')}</th>
+                        <th className="py-3 px-4">{t('staff.table_update_status', 'Update Status')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-dark-neutral/20 font-medium">
@@ -978,7 +978,7 @@ export const StaffDashboardPage = () => {
           <div className="space-y-6 animate-step-enter">
             {/* 1. Staff Members Section */}
             <Card
-              title="Centre Operating Staff Members"
+              title={t('staff.tab_management', 'Centre Operating Staff Members')}
               accentBorder
               shadow="normal"
               actions={
@@ -989,28 +989,28 @@ export const StaffDashboardPage = () => {
                     onClick={() => setShowAddStaffModal(true)}
                   >
                     <UserPlus className="w-3.5 h-3.5 mr-1.5" />
-                    <span>+ Add Staff Member</span>
+                    <span>{t('staff.btn_add_staff', '+ Add Staff Member')}</span>
                   </Button>
                 ) : null
               }
             >
               {isLoadingCentreData ? (
-                <LoadingState message="Loading centre staff accounts..." />
+                <LoadingState message={t('staff.loading_staff', 'Loading centre staff accounts...')} />
               ) : staffList.length === 0 ? (
-                <p className="text-xs text-dark-neutral-muted text-center py-6">No staff members currently registered.</p>
+                <p className="text-xs text-dark-neutral-muted text-center py-6">{t('staff.no_staff', 'No staff members currently registered.')}</p>
               ) : (
                 <div className="overflow-x-auto -mx-5 -mb-5">
                   <table className="w-full text-left text-xs border-t-2 border-dark-neutral">
                     <thead className="bg-warm-ivory text-dark-neutral font-black uppercase text-[10px] tracking-wider border-b-2 border-dark-neutral">
                       <tr>
-                        <th className="py-3 px-4">Staff Member</th>
-                        <th className="py-3 px-4">Role / Designation</th>
-                        <th className="py-3 px-4">Email</th>
-                        <th className="py-3 px-4">Phone</th>
-                        <th className="py-3 px-4">Status</th>
-                        <th className="py-3 px-4">Current Workload</th>
-                        <th className="py-3 px-4">Today's Assignments</th>
-                        <th className="py-3 px-4">Actions</th>
+                        <th className="py-3 px-4">{t('staff.table_staff_member', 'Staff Member')}</th>
+                        <th className="py-3 px-4">{t('staff.table_role', 'Role / Designation')}</th>
+                        <th className="py-3 px-4">{t('staff.table_email', 'Email')}</th>
+                        <th className="py-3 px-4">{t('staff.table_phone', 'Phone')}</th>
+                        <th className="py-3 px-4">{t('staff.table_status', 'Status')}</th>
+                        <th className="py-3 px-4">{t('staff.table_workload', 'Current Workload')}</th>
+                        <th className="py-3 px-4">{t('staff.table_assignments', "Today's Assignments")}</th>
+                        <th className="py-3 px-4">{t('staff.table_actions', 'Actions')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-dark-neutral/20 font-medium">

@@ -432,7 +432,7 @@ export const FindCentresPage = () => {
                   </span>
                   <span className="text-[10px] font-black uppercase tracking-wider text-green-900 bg-green-100 border border-green-800 px-2.5 py-0.5 rounded-xs inline-flex items-center gap-1 font-mono">
                     <ShieldCheck className="w-3.5 h-3.5 text-green-800" />
-                    <span>GOVERNMENT CERTIFIED PROCUREMENT CENTRE</span>
+                    <span>{t('farmer.certified_gov_facility')}</span>
                   </span>
                 </div>
                 <h4 className="text-lg font-black font-heading text-dark-neutral">{detailModalCentre.name}</h4>
@@ -441,7 +441,7 @@ export const FindCentresPage = () => {
               {/* 3. Full Address & Contact Info */}
               <div className="p-3 bg-white rounded-xs border-2 border-dark-neutral shadow-[2px_2px_0px_#22252A] space-y-1.5">
                 <span className="text-[10px] font-black uppercase text-dark-neutral-muted block">
-                  3. Address & Administrative Contacts
+                  3. {t('farmer.param_address_title')}
                 </span>
                 <p className="text-dark-neutral flex items-start gap-1.5 font-medium">
                   <MapPin className="w-3.5 h-3.5 text-forest-green shrink-0 mt-0.5" />
@@ -453,7 +453,7 @@ export const FindCentresPage = () => {
                     <span className="font-bold">{detailModalCentre.contactPhone || '+91 522 2720011'}</span>
                   </p>
                   <p className="text-dark-neutral-muted flex items-center gap-1.5">
-                    <span className="text-[10px] font-bold uppercase">District:</span>
+                    <span className="text-[10px] font-bold uppercase">{t('farmer.crop_filter_label')}:</span>
                     <span className="font-bold text-dark-neutral">{detailModalCentre.district || 'Lucknow'}, {detailModalCentre.state || 'Uttar Pradesh'}</span>
                   </p>
                 </div>
@@ -463,21 +463,21 @@ export const FindCentresPage = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="p-3 bg-white rounded-xs border-2 border-dark-neutral shadow-[2px_2px_0px_#22252A]">
                   <span className="text-[10px] font-black uppercase text-dark-neutral-muted block mb-1">
-                    4. Operating Schedule
+                    4. {t('farmer.param_schedule_title')}
                   </span>
                   <p className="font-black text-dark-neutral">08:00 AM – 06:00 PM</p>
-                  <span className="text-[10px] text-dark-neutral-muted block mt-0.5">Monday to Saturday • Open Today</span>
+                  <span className="text-[10px] text-dark-neutral-muted block mt-0.5">{t('farmer.schedule_details')}</span>
                 </div>
 
                 <div className="p-3 bg-white rounded-xs border-2 border-dark-neutral shadow-[2px_2px_0px_#22252A]">
                   <span className="text-[10px] font-black uppercase text-dark-neutral-muted block mb-1">
-                    5. Real-Time Queue & Wait Time
+                    5. {t('farmer.param_queue_title')}
                   </span>
                   <p className="font-black text-amber-800">
-                    ~{detailModalCentre.estimatedWaitMinutes || 25} mins estimated wait
+                    {t('farmer.estimated_wait_mins', { minutes: detailModalCentre.estimatedWaitMinutes || 25 })}
                   </p>
                   <span className="text-[10px] text-dark-neutral-muted block mt-0.5">
-                    Queue status: Low congestion ({detailModalCentre.availableSlotsToday || 12} slots available)
+                    {t('farmer.queue_congestion_status', { slots: detailModalCentre.availableSlotsToday || 12 })}
                   </span>
                 </div>
               </div>
@@ -486,10 +486,10 @@ export const FindCentresPage = () => {
               <div className="p-3 bg-white rounded-xs border-2 border-dark-neutral shadow-[2px_2px_0px_#22252A]">
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-[10px] font-black uppercase text-dark-neutral-muted">
-                    6. Facility Capacity & Current Load
+                    6. {t('farmer.param_capacity_title')}
                   </span>
                   <span className="font-mono font-bold text-forest-green">
-                    {detailModalCentre.dailyCapacityQuintals || 1500} Qtl / Day Intake
+                    {t('farmer.capacity_qtl_per_day', { capacity: detailModalCentre.dailyCapacityQuintals || 1500 })}
                   </span>
                 </div>
                 <div className="w-full bg-gray-200 h-2.5 rounded-full overflow-hidden border border-dark-neutral">
@@ -499,15 +499,15 @@ export const FindCentresPage = () => {
                   ></div>
                 </div>
                 <div className="flex justify-between text-[10px] font-bold text-dark-neutral-muted mt-1">
-                  <span>Current Utilization: {detailModalCentre.currentLoadPercentage || 40}%</span>
-                  <span>Ample Capacity Available</span>
+                  <span>{t('farmer.current_utilization', { pct: detailModalCentre.currentLoadPercentage || 40 })}</span>
+                  <span>{t('farmer.ample_capacity')}</span>
                 </div>
               </div>
 
               {/* 7. Accepted Commodities & Quality Guidelines */}
               <div className="p-3 bg-white rounded-xs border-2 border-dark-neutral shadow-[2px_2px_0px_#22252A] space-y-1.5">
                 <span className="text-[10px] font-black uppercase text-dark-neutral-muted block">
-                  7. Accepted Crops & Fair Average Quality (FAQ) Standards
+                  7. {t('farmer.param_crops_title')}
                 </span>
                 <div className="flex gap-1.5 flex-wrap pb-1">
                   {(detailModalCentre.crops || ['Wheat', 'Paddy', 'Mustard', 'Maize']).map((crop) => (
@@ -517,7 +517,7 @@ export const FindCentresPage = () => {
                   ))}
                 </div>
                 <p className="text-[10px] text-dark-neutral-muted leading-relaxed border-t border-dark-neutral/10 pt-1">
-                  • Produce must meet standard FAQ criteria: Maximum moisture limit 12.0%, foreign matter &lt; 0.75%, damaged/weeviled grains &lt; 2.0%.
+                  {t('farmer.faq_criteria_desc')}
                 </p>
               </div>
 
@@ -525,16 +525,16 @@ export const FindCentresPage = () => {
               <div className="p-3 bg-white rounded-xs border-2 border-dark-neutral shadow-[2px_2px_0px_#22252A] flex items-center justify-between">
                 <div>
                   <span className="text-[10px] font-black uppercase text-dark-neutral-muted block">
-                    8. Appointed Head & Operating Personnel
+                    8. {t('farmer.param_head_title')}
                   </span>
                   <span className="font-black text-dark-neutral block mt-0.5">
-                    Satish Kumar (Appointed Centre Head)
+                    Satish Kumar ({t('staff.appointed_head_label')})
                   </span>
                   <span className="text-[10px] text-dark-neutral-muted">
-                    6 Active Staff Personnel on Duty (Quality Inspectors & Weighing Operators)
+                    {t('farmer.staff_on_duty', { count: 6 })}
                   </span>
                 </div>
-                <Badge variant="success">Staff Ready</Badge>
+                <Badge variant="success">{t('farmer.staff_ready')}</Badge>
               </div>
             </div>
           </Modal>

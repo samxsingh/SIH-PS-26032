@@ -154,7 +154,7 @@ export const AdminCentresMap = ({
                   cursor: pointer;
                 "
               >
-                Open Application Review
+                ${t('admin.btn_open_app_review', 'Open Application Review')}
               </button>
             </div>
           `;
@@ -188,23 +188,23 @@ export const AdminCentresMap = ({
       {/* Interactive Legend Box */}
       <div className="absolute top-3 right-3 z-10 bg-white/95 backdrop-blur-xs p-3 rounded-xs border-2 border-dark-neutral shadow-brutal-sm text-xs space-y-1.5 pointer-events-auto">
         <span className="text-[10px] font-black uppercase tracking-wider text-dark-neutral-muted block mb-1">
-          Centre Status Markers
+          {t('admin.legend_title', 'Centre Status')}
         </span>
         <div className="flex items-center gap-2">
           <span className="w-3 h-3 rounded-full bg-[#D97706] border border-dark-neutral"></span>
-          <span className="font-bold text-dark-neutral">Pending / Under Review</span>
+          <span className="font-bold text-dark-neutral">{t('admin.legend_pending', 'Pending / Under Review')}</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="w-3 h-3 rounded-full bg-[#166534] border border-dark-neutral"></span>
-          <span className="font-bold text-dark-neutral">Approved / Active</span>
+          <span className="font-bold text-dark-neutral">{t('admin.legend_approved', 'Approved / Active')}</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="w-3 h-3 rounded-full bg-[#DC2626] border border-dark-neutral"></span>
-          <span className="font-bold text-dark-neutral">Rejected</span>
+          <span className="font-bold text-dark-neutral">{t('admin.legend_rejected', 'Rejected')}</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="w-3 h-3 rounded-full bg-[#4B5563] border border-dark-neutral"></span>
-          <span className="font-bold text-dark-neutral">Suspended / Needs Correction</span>
+          <span className="font-bold text-dark-neutral">{t('admin.legend_suspended', 'Suspended / Correction')}</span>
         </div>
       </div>
     </div>
