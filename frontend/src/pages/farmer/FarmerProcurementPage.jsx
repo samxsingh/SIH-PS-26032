@@ -9,6 +9,7 @@ import Card from '../../components/common/Card';
 import Badge from '../../components/common/Badge';
 import Button from '../../components/common/Button';
 import Alert from '../../components/common/Alert';
+import ProgressLadder from '../../components/common/ProgressLadder';
 import LoadingState from '../../components/common/LoadingState';
 import ErrorState from '../../components/common/ErrorState';
 import EmptyState from '../../components/common/EmptyState';
@@ -329,47 +330,48 @@ export const FarmerProcurementPage = () => {
             </Alert>
 
             {/* 8-Stage Visual Timeline Tracker Card */}
-            <Card title={t('farmer.timeline_title', '8-Stage Payment Progression Timeline')} accentBorder shadow="normal">
-              <div className="py-2">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {STAGES.map((s, idx) => {
-                    const isPassed = idx <= currentStageIndex;
-                    const isCurrent = idx === currentStageIndex;
+            <Card title={t('farmer.timeline_title', 'Procurement & DBT Progression Timeline')} accentBorder shadow="normal">
+              <div className="py-2 space-y-4">
+                {/* Visual Ladder */}
+                <ProgressLadder
+                  stages={STAGES.map((s, idx) => ({
+                    key: s.key,
+                    short: getStageLabel(s.key, s.label),
+                    label: getStageLabel(s.key, s.label),
+                    desc: idx < 5 ? 'Mandate Stage: Verification & Net Physical Intake' : 'Financial Stage: Direct Benefit Transfer (DBT)'
+                  }))}
+                  currentIndex={currentStageIndex}
+                />
 
-                    return (
-                      <div
-                        key={s.key}
-                        className={`p-3 rounded-xs border-2 border-dark-neutral transition-all duration-normal ease-tactile text-left flex flex-col justify-between min-h-[72px] ${
-                          isCurrent
-                            ? 'bg-forest-green-light text-forest-green ring-2 ring-forest-green shadow-brutal-sm -translate-y-0.5'
-                            : isPassed
-                            ? 'bg-emerald-100 text-emerald-950 shadow-[2px_2px_0px_#22252A]'
-                            : 'bg-warm-ivory opacity-60 text-dark-neutral-muted'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <span
-                            className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-xs border border-dark-neutral ${
-                              isCurrent
-                                ? 'bg-forest-green text-white'
-                                : isPassed
-                                ? 'bg-emerald-700 text-white'
-                                : 'bg-gray-200 text-gray-700'
-                            }`}
-                          >
-                            {t('farmer.stage_num', { num: idx + 1 })}
-                          </span>
-                          {isPassed && (
-                            <Check className="w-4 h-4 text-emerald-800 font-black animate-scale-check" />
-                          )}
-                        </div>
+                {/* Clear Stage Grouping Summary */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t-2 border-dark-neutral/10">
+                  <div className={`p-3 rounded-xs border-2 ${currentStageIndex < 5 ? 'bg-emerald-50 border-emerald-700' : 'bg-warm-ivory border-dark-neutral/30'}`}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-dark-neutral">
+                        Phase 1: Physical Procurement
+                      </span>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-xs border ${currentStageIndex >= 5 ? 'bg-emerald-100 text-emerald-800 border-emerald-400' : 'bg-forest-green text-white border-dark-neutral'}`}>
+                        {currentStageIndex >= 5 ? 'Completed' : 'Active'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-dark-neutral-muted">
+                      Slot reservation, moisture assaying, grain quality grade certification, and weighbridge intake slip.
+                    </p>
+                  </div>
 
-                        <span className="text-xs font-black block leading-tight">
-                          {getStageLabel(s.key, s.label)}
-                        </span>
-                      </div>
-                    );
-                  })}
+                  <div className={`p-3 rounded-xs border-2 ${currentStageIndex >= 5 ? 'bg-amber-50 border-amber-700' : 'bg-warm-ivory border-dark-neutral/30'}`}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-dark-neutral">
+                        Phase 2: DBT Payment Settlement
+                      </span>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-xs border ${currentStageIndex === 7 ? 'bg-emerald-100 text-emerald-800 border-emerald-400' : currentStageIndex >= 5 ? 'bg-amber-500 text-white border-dark-neutral' : 'bg-gray-100 text-gray-600 border-gray-300'}`}>
+                        {currentStageIndex === 7 ? 'Paid (Disbursed)' : currentStageIndex >= 5 ? 'Processing' : 'Awaiting Procurement'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-dark-neutral-muted">
+                      Public Financial Management System (PFMS) verification and direct bank transfer disbursement.
+                    </p>
+                  </div>
                 </div>
               </div>
             </Card>

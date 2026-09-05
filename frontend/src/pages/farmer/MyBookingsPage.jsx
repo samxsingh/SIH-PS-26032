@@ -13,6 +13,7 @@ import StatusIndicator from '../../components/common/StatusIndicator';
 import LoadingState from '../../components/common/LoadingState';
 import EmptyState from '../../components/common/EmptyState';
 import Alert from '../../components/common/Alert';
+import ProgressLadder from '../../components/common/ProgressLadder';
 import {
   Ticket,
   Calendar,
@@ -319,13 +320,13 @@ export const MyBookingsPage = () => {
                   </div>
                 </div>
 
-                {/* 8-Stage Visual Progress Tracker */}
-                <div className="my-3 p-3.5 bg-warm-ivory/70 border-2 border-dark-neutral rounded-xs shadow-[2px_2px_0px_#22252A]">
-                  <div className="flex items-center justify-between gap-2 mb-2">
+                {/* Straight-Line / Ladder Progress Tracker */}
+                <div className="my-3 p-4 bg-warm-ivory/80 border-2 border-dark-neutral rounded-xs shadow-[2px_2px_0px_#22252A]">
+                  <div className="flex items-center justify-between gap-2 mb-3">
                     <span className="text-[10px] font-black uppercase tracking-wider text-dark-neutral">
                       {t('farmer.workflow_tracker_title', '8-Stage Procurement Workflow Tracker')}
                     </span>
-                    <span className="text-[10px] font-bold text-forest-green">
+                    <span className="text-[10px] font-black text-forest-green bg-forest-green-light px-2 py-0.5 rounded-xs border border-forest-green/40">
                       {t('farmer.stage_of_8', {
                         current: getBookingStageIndex(booking.operationalStatus, booking.bookingStatus) + 1,
                         label: operationalStages[getBookingStageIndex(booking.operationalStatus, booking.bookingStatus)].short
@@ -333,39 +334,14 @@ export const MyBookingsPage = () => {
                     </span>
                   </div>
 
-                  {/* Visual Steps Grid */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-1.5">
-                    {operationalStages.map((stg, sIdx) => {
-                      const curIdx = getBookingStageIndex(booking.operationalStatus, booking.bookingStatus);
-                      const isPassed = sIdx < curIdx;
-                      const isCurrent = sIdx === curIdx;
-
-                      return (
-                        <div
-                          key={stg.key}
-                          className={`p-1.5 rounded-xs border-2 text-center transition-all ${
-                            isCurrent
-                              ? 'bg-forest-green text-white border-dark-neutral shadow-[2px_2px_0px_#22252A] font-black -translate-y-0.5'
-                              : isPassed
-                              ? 'bg-emerald-100 text-emerald-950 border-emerald-600 font-bold'
-                              : 'bg-white text-dark-neutral-muted border-dark-neutral/30 opacity-70'
-                          }`}
-                        >
-                          <div className="flex items-center justify-center gap-1">
-                            {isPassed ? (
-                              <CheckCircle2 className="w-3 h-3 text-emerald-800" />
-                            ) : (
-                              <span className="text-[9px] font-mono">{sIdx + 1}</span>
-                            )}
-                            <span className="text-[10px] uppercase truncate block">{stg.short}</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  {/* Responsive Straight-Line / Vertical Ladder Component */}
+                  <ProgressLadder
+                    stages={operationalStages}
+                    currentIndex={getBookingStageIndex(booking.operationalStatus, booking.bookingStatus)}
+                  />
 
                   {/* Non-Technical Stage Explanation Box */}
-                  <div className="mt-2.5 p-2 bg-white rounded-xs border border-dark-neutral text-[11px] flex items-center justify-between gap-2">
+                  <div className="mt-3 p-2.5 bg-white rounded-xs border border-dark-neutral text-[11px] flex items-center justify-between gap-2">
                     <span className="text-dark-neutral">
                       <strong>{t('farmer.current_step_label', 'Current Step')}:</strong> {operationalStages[getBookingStageIndex(booking.operationalStatus, booking.bookingStatus)].desc}
                     </span>
