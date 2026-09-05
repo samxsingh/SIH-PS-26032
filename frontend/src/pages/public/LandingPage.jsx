@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import LandingNavbar from '../../components/public/LandingNavbar';
 import LandingFooter from '../../components/public/LandingFooter';
 import WorkflowDiagram from '../../components/public/WorkflowDiagram';
+import AgriculturalNetworkBackground from '../../components/public/AgriculturalNetworkBackground';
 import {
   MapPin,
   Calendar,
@@ -132,8 +133,11 @@ export const LandingPage = () => {
         {/* ========================================================= */}
         {/* 1. HERO SECTION */}
         {/* ========================================================= */}
-        <section className="pt-10 sm:pt-16 pb-12 sm:pb-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
-          <div className="text-center max-w-4xl mx-auto space-y-6">
+        <section className="relative overflow-hidden pt-10 sm:pt-16 pb-12 sm:pb-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
+          {/* Dynamic Agricultural Network & Floating Status Cards */}
+          <AgriculturalNetworkBackground />
+
+          <div className="relative z-10 text-center max-w-4xl mx-auto space-y-6">
             {/* Government Badge */}
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xs bg-forest-green-light border-2 border-dark-neutral text-forest-green text-xs sm:text-sm font-black tracking-wide shadow-[2px_2px_0px_#22252A] animate-page-enter">
               <span>{t('landing.badge')}</span>
@@ -174,7 +178,7 @@ export const LandingPage = () => {
           </div>
 
           {/* Editorial Visual: End-to-End Workflow Diagram */}
-          <div className="mt-12 sm:mt-16 animate-page-enter stagger-3">
+          <div className="relative z-10 mt-12 sm:mt-16 animate-page-enter stagger-3">
             <WorkflowDiagram />
           </div>
         </section>
