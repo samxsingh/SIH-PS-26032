@@ -2,6 +2,9 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const mongoose = require('mongoose');
+const env = require('./config/env');
+const bhashiniService = require('./services/bhashiniService');
 
 const authRoutes = require('./routes/authRoutes');
 const centreRoutes = require('./routes/centreRoutes');
@@ -22,19 +25,39 @@ const app = express();
 // Security Headers
 app.use(helmet());
 
-// CORS Configuration
-const allowedOrigins = process.env.CLIENT_URL || 'http://localhost:5173';
-app.use(
-  cors({
-    origin: allowedOrigins,
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-  })
-);
+// Dynamic, Multi-Origin CORS Configuration (Supporting Vercel, Localhost & Custom Domains)
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow non-browser requests (server-to-server, mobile, curl, Postman, health check)
+    if (!origin) return callback(null, true);
+
+    const allowed = env.CORS_ORIGINS;
+    if (allowed.includes('*') || allowed.includes(origin)) {
+      return callback(null, true);
+    }
+
+    // Support Vercel production and preview deployments
+    const isVercelOrigin = origin.endsWith('.vercel.app') && allowed.some((o) => o.includes('vercel.app'));
+    if (isVercelOrigin) {
+      return callback(null, true);
+    }
+
+    // Allow localhost/127.0.0.1 in non-production
+    if (!env.IS_PRODUCTION && (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
+      return callback(null, true);
+    }
+
+    return callback(new Error(`Origin ${origin} is not allowed by CORS policy.`));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+app.use(cors(corsOptions));
 
 // Request Logging
-if (process.env.NODE_ENV !== 'test') {
+if (env.NODE_ENV !== 'test') {
   app.use(morgan('dev'));
 }
 
@@ -42,13 +65,15 @@ if (process.env.NODE_ENV !== 'test') {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Health Check Endpoint
+// Production Health Check Endpoint (Safe, Non-Sensitive Diagnostic Information)
 app.get('/api/health', (req, res) => {
   res.status(200).json({
-    success: true,
-    message: 'AgriNexus Digital Procurement API is running',
+    status: 'ok',
+    service: 'AgriNexus Digital Procurement Platform API',
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
+    environment: env.NODE_ENV,
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'in-memory-fallback',
+    bhashini: bhashiniService.isConfigured() ? 'configured' : 'fallback-mode'
   });
 });
 

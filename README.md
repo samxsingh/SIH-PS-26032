@@ -1,110 +1,135 @@
-# AgriNexus
-## Digital Procurement & Market Access Platform
-### Smart India Hackathon 2026 – Problem Statement ID: 26032
+# AgriNexus — Smart Public Agricultural Procurement & Queue Platform
 
-> **Department of Consumer Affairs (DoCA)**  
-> **Ministry of Consumer Affairs, Food & Public Distribution**  
-> **Theme:** Smart Automation | **Category:** Software  
+[![Platform](https://img.shields.io/badge/Platform-Mandi%20Procurement-1B4D3E.svg)](#)
+[![Stack](https://img.shields.io/badge/Stack-MERN%20%2B%20Socket.io-22252A.svg)](#)
+[![Deployment](https://img.shields.io/badge/Deploy-Vercel%20%2B%20Render-3B82F6.svg)](#)
+[![GIS](https://img.shields.io/badge/GIS-Google%20Maps%20%7C%20Leaflet-forestgreen.svg)](#)
+[![Bhashini](https://img.shields.io/badge/MeitY-Digital%20India%20Bhashini-orange.svg)](#)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](#)
 
----
-
-## 🌾 Project Overview
-
-**AgriNexus** is a government-oriented coordination and digital market access platform designed to optimize agricultural crop procurement across India. It addresses critical bottlenecks at procurement centres—specifically long farmer waiting times, lack of schedule visibility, chaotic manual queues, and payment tracking opacity.
-
-Built on the foundational philosophy **"Right Information. Right Time. Right Place."**, the platform bridges three primary stakeholders:
-1. **Farmers:** Mobile-first, bilingual interface for transparent slot booking, smart centre recommendation, live queue tracking, digital receipt viewing, and payment status monitoring.
-2. **Procurement Centre Staff:** Counter dashboard for live token calling, produce quality verification, moisture testing, net weighing, server-calculated MSP settlements, and digital receipt issuance.
-3. **Government Administrators:** High-level command centre for district/state procurement monitoring, real-time load balancing, health monitoring, congestion alerts, payment pipeline oversight, and compliance audit logging.
-
-> **Environment & Data Notice:**  
-> AgriNexus currently operates as an SIH demonstration environment using a curated administrative reference dataset and explicitly labelled demonstration procurement-centre records. Production deployment would require synchronization with authoritative government datasets and verified procurement-centre registries.
+> **Ministry of Consumer Affairs, Food and Public Distribution / Smart India Hackathon (SIH 2026)**  
+> **Problem Statement 26032**: Transparent, Real-Time Mandi Slot Booking, Automated Token Generation, Fair Assaying, Calibrated Weighment, and Instant Direct Benefit Transfer (DBT) Tracking.
 
 ---
 
-## 📍 Data Provenance & Administrative Location Scope
+## 🏛️ System Overview
 
-| Attribute | Specification |
-| :--- | :--- |
-| **Dataset Name** | AgriNexus Representative Administrative Reference Dataset |
-| **Source Alignment** | Local Government Directory (LGD) / Ministry of Panchayati Raj / Census reference classifications |
-| **National Scope** | All 28 States and 8 Union Territories (36 States/UTs total) |
-| **Locality Model** | Curated representative administrative localities with seamless `"Can't find your village or town?"` user-entered fallback (`locationSource: 'USER_ENTERED'`) |
-| **Coordinates Model** | Administrative centroid approximations for regional distance scoring and routing |
-| **GPS Architecture** | Approximate location suggestion with explicit user confirmation modal; never silently mutates registered profile |
-| **Procurement Centres** | Demonstration records explicitly tagged `dataSource: 'DEMO'`, `verificationStatus: 'UNVERIFIED'` with badge *"Demo Record — Pending Verification"* |
+AgriNexus connects Indian farmers with minimum support price (MSP) procurement centres across 3 specialized roles:
+1. **Farmer Portal**: Crop registration, nearest procurement centre discovery, transparent slot booking, digital tokens, straight-line 8-stage procurement & DBT tracking, and verified identity profile.
+2. **Procurement Centre Workspace**: Real-time queue intake, gate arrival verification, automated quality assaying, certified gross/tare weighbridge calculations, and digital acceptance slip issuance.
+3. **Government Command Centre**: Statewide procurement KPIs, GIS centre mapping, audit trails, and staff onboarding verifications.
 
 ---
 
-## 🎯 Core Features
+## 🌐 Production Architecture (Vercel + Render + MongoDB Atlas)
 
-* **Role-Based Authentication & Provisioning**:
-  * **Farmer Self-Registration**: Guided 4-step wizard collecting strictly necessary onboarding data.
-  * **Role Escalation Prevention**: Backend strictly rejects attempts to create `ADMIN` or `CENTRE_STAFF` via public registration (`403 FORBIDDEN`).
-  * **Admin Staff Provisioning**: Secure endpoint (`POST /api/admin/staff`) for authorized administrator to onboard staff tied to verified procurement centres.
-  * **Role-Verified Login**: Rejects role mismatches (`403 ROLE_MISMATCH`) and routes securely to designated dashboards.
-* **Authoritative Administrative Location Hierarchy**:
-  * Hierarchical dataset: `State` $\rightarrow$ `District` $\rightarrow$ `Village / Town` with dependent selection resets.
-  * Searchable comboboxes with full keyboard navigation (Up/Down/Enter/Esc) and ARIA accessibility.
-  * Transparent GPS Device Location vs. Registered Administrative Location indicator.
-* **Procurement Centre Data Provenance & Verification**:
-  * Explicit lifecycle tracking: `VERIFIED`, `UNVERIFIED`, `NEEDS_REVIEW`, `INACTIVE`.
-  * Transparent simulation tags for demo records (`dataSource: 'DEMO'`).
-* **Interactive Leaflet Map**:
-  * OpenStreetMap layer with exact centre coordinates.
-  * Bidirectional sync between centre list and map markers.
-  * Mobile-responsive `[ List ] [ Map ]` segment view.
-* **Regional Language Architecture**:
-  * Central language registry (`languages.js`) supporting active MVP languages (English, Hindi) and expansion roadmap (Marathi, Punjabi, Gujarati, Bengali, Tamil, Telugu, Kannada, Malayalam, Odia, Assamese).
-  * Strict single-language UI without mixed-language strings.
-* **Government Command Centre (`/admin`)**: Real-time operational overview, system health status, IST operational time (`Asia/Kolkata`), and demo environment notices.
-* **Deterministic Centre Health & Congestion Rules**:
-  * `HEALTHY`: Wait $< 60\text{ min}$ AND load $< 70\%$.
-  * `WATCH`: Wait $60-90\text{ min}$ OR load $70-90\%$.
-  * `CRITICAL`: Wait $> 90\text{ min}$ OR load $> 90\%$.
-* **Crop & Payment Analytics**: MongoDB aggregation breakdown by crop (`Wheat`, `Paddy`, `Pulses`, `Mustard`) and 8-stage payment pipeline monitoring with SLA tracking.
-* **Read-Only Compliance Audit Log (`/admin/audit`)**: Filterable, immutable audit ledger capturing actor user ID, role, action, previous/new states, and timestamp.
-
----
-
-## 🛠️ Technology Stack
-
-* **Frontend:** React 18, Vite 5, Tailwind CSS 3, React Router DOM 6, Socket.IO Client 4, Lucide Icons, Leaflet Maps, react-i18next, Axios
-* **Backend:** Node.js (v18+ LTS), Express.js, Socket.IO 4, Mongoose ODM, JWT (`jsonwebtoken`), `bcryptjs`, Joi, Helmet, CORS, Morgan
-* **Database:** MongoDB 6.0+ (Document Store with 2dsphere Geospatial Indexing & In-Memory Dev Fallback)
-* **Architecture:** Modular Monolith with clean Controller-Service-Repository separation
-
----
-
-## 🚀 Verification & Automated Tests
-
-```bash
-# 1. Run Complete Automated Backend Test Suite (Auth Security, Location & Workflows)
-npm test --prefix backend
-
-# 2. Run End-to-End Live Smoke Test (Localhost:5001)
-npm run smoke --prefix backend
-
-# 3. Verify Frontend Production Build
-npm run build --prefix frontend
+```
+User Browser
+     │
+     ▼
+Vercel (React / Vite SPA)
+     │
+     │ HTTPS REST API
+     │ WSS WebSocket (Socket.IO)
+     ▼
+Render (Node.js / Express Web Service)
+     ├── MongoDB Atlas (Managed Cloud Database)
+     ├── Google Maps Platform (GIS, Directions, Places)
+     └── Digital India Bhashini APIs (MeitY Regional Translation Pipeline)
 ```
 
 ---
 
-## ⚙️ Local Development Servers
+## 🚀 Deployment Guides
+
+### 1. Frontend Deployment (Vercel)
+1. Import repository into **Vercel**.
+2. Set **Root Directory** to `frontend` (or use the root directory with `frontend/vercel.json` SPA rewrite rules).
+3. Set **Framework Preset** to **Vite**.
+4. Configure Environment Variables in Vercel Project Settings:
+   ```env
+   VITE_API_BASE_URL=https://your-agrinexus-backend.onrender.com/api
+   VITE_SOCKET_URL=https://your-agrinexus-backend.onrender.com
+   VITE_GOOGLE_MAPS_API_KEY=your_restricted_google_maps_key
+   VITE_APP_ENV=production
+   ```
+5. Deploy. All SPA routes (`/login`, `/access`, `/farmer/bookings`, etc.) resolve seamlessly via `vercel.json`.
+
+### 2. Backend Deployment (Render)
+1. Create a new **Web Service** on **Render** connected to the repository.
+2. Set **Root Directory** to `backend`.
+3. Set **Environment** to `Node`.
+4. Configure Build and Start Commands:
+   - **Build Command**: `npm install`
+   - **Start Command**: `npm start`
+5. Configure Environment Variables in Render:
+   ```env
+   NODE_ENV=production
+   FRONTEND_URL=https://your-agrinexus.vercel.app
+   CORS_ORIGINS=https://your-agrinexus.vercel.app
+   SOCKET_CORS_ORIGINS=https://your-agrinexus.vercel.app
+   MONGODB_URI=mongodb+srv://<user>:<password>@cluster0.xxxxx.mongodb.net/agrinexus?retryWrites=true&w=majority
+   JWT_SECRET=replace_with_strong_random_secret_minimum_32_chars
+   JWT_EXPIRES_IN=24h
+   ADMIN_EMAIL=admin@agrinexus.gov.in
+   ADMIN_PASSWORD=adminpassword
+   GOOGLE_MAPS_API_KEY=your_server_google_maps_key
+   BHASHINI_API_KEY=your_bhashini_api_key
+   BHASHINI_USER_ID=your_bhashini_user_id
+   BHASHINI_PIPELINE_ID=64392f96daac500b55c543d6
+   BHASHINI_API_URL=https://dhruva-api.bhashini.gov.in/services/inference/pipeline
+   ```
+   *(Note: Render automatically supplies `PORT`, and backend binds to `0.0.0.0:PORT` automatically).*
+
+---
+
+## 💻 Local Development Setup
 
 ```bash
-# Backend API & Socket Server (http://localhost:5001)
+# 1. Install dependencies
+npm run setup
+
+# 2. Seed database with demo procurement centres and crops
+npm run seed --prefix backend
+
+# 3. Start Backend Server (http://localhost:5001)
 node backend/server.js
 
-# Frontend Development Server (http://localhost:5173)
+# 4. Start Frontend Client (http://localhost:5173)
 npm run dev --prefix frontend
 ```
 
 ---
 
-## 🔐 Demo Credentials
+## 🧪 Testing & Verification
 
-* **Farmer**: Phone: `9876543210` | Password: `password123`
-* **Centre Staff**: Phone: `9876543211` | Password: `password123` (Assigned: Sehore Mandi)
-* **Government Administrator**: Phone: `9876543212` | Password: `adminpassword`
+```bash
+# 1. Run Complete Automated Backend Test Suite
+npm test --prefix backend
+
+# 2. Run Bhashini & Google Maps Integration Tests
+node backend/test-bhashini-maps.js
+
+# 3. Run End-to-End Live System Smoke Test
+npm run smoke --prefix backend
+
+# 4. Run Frontend Production Build
+npm run build --prefix frontend
+```
+
+---
+
+## 🔐 Demonstration Credentials (One-Click "Use Demo Account")
+
+* **Farmer**:
+  - Login Type: **Mobile Number + Password**
+  - Mobile: `9876543210`
+  - Password: `password123`
+* **Procurement Centre**:
+  - Login Type: **Email + Password**
+  - Email: `gomtinagar.centre@agrinexus.demo` (or `sehore.centre@agrinexus.demo`)
+  - Password: `password123`
+* **Government Administrator**:
+  - Login Type: **Email + Password**
+  - Email: `admin@agrinexus.gov.in`
+  - Password: `adminpassword`

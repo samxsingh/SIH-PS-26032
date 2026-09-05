@@ -619,22 +619,33 @@ Seed script (`npm run seed`) populates realistic Indian agricultural demo data:
 
 ---
 
-## 38. Environment Variables
+## 38. Production Environment Variables
 
-### Backend `.env.example`
+### Backend (`backend/.env`)
 ```env
-PORT=5000
-NODE_ENV=development
-MONGODB_URI=mongodb://localhost:27017/smart_procurement_db
-JWT_SECRET=super_secret_sih_2026_gov_key_change_in_production
+NODE_ENV=production
+PORT=5001
+FRONTEND_URL=https://your-agrinexus.vercel.app
+CORS_ORIGINS=https://your-agrinexus.vercel.app
+SOCKET_CORS_ORIGINS=https://your-agrinexus.vercel.app
+MONGODB_URI=mongodb+srv://<user>:<password>@cluster0.xxxxx.mongodb.net/agrinexus?retryWrites=true&w=majority
+JWT_SECRET=replace_with_strong_random_secret_minimum_32_chars
 JWT_EXPIRES_IN=24h
-CORS_ORIGIN=http://localhost:5173
+ADMIN_EMAIL=admin@agrinexus.gov.in
+ADMIN_PASSWORD=adminpassword
+GOOGLE_MAPS_API_KEY=your_server_google_maps_key
+BHASHINI_API_KEY=your_bhashini_api_key
+BHASHINI_USER_ID=your_bhashini_user_id
+BHASHINI_PIPELINE_ID=64392f96daac500b55c543d6
+BHASHINI_API_URL=https://dhruva-api.bhashini.gov.in/services/inference/pipeline
 ```
 
-### Frontend `.env.example`
+### Frontend (`frontend/.env`)
 ```env
-VITE_API_BASE_URL=http://localhost:5000/api
-VITE_SOCKET_URL=http://localhost:5000
+VITE_API_BASE_URL=https://your-agrinexus-backend.onrender.com/api
+VITE_SOCKET_URL=https://your-agrinexus-backend.onrender.com
+VITE_GOOGLE_MAPS_API_KEY=your_restricted_google_maps_key
+VITE_APP_ENV=production
 ```
 
 ---
@@ -722,4 +733,46 @@ AgriNexus enforces strict role isolation reflecting real-world public digital se
 | **Banking / DBT Status** | DEMO / SIMULATION | 8-stage deterministic state tracking pipeline | PFMS / NPCI DBT payment gateway integration |
 | **SMS Notifications** | DEMO / SIMULATION | Console & in-app notification ledger | CDAC / NIC SMS Gateway integration |
 | **Language Localization** | IMPLEMENTED (EN/HI) | Complete English & natural Hindi bundles; regional expansion roadmap prepared | Professional regional translations for 10 planned languages |
+
+---
+
+## 47. Production Cloud Deployment Architecture (Vercel + Render + Atlas)
+
+```
+[Farmer / Staff / Admin Browser]
+              │
+              ▼ HTTPS
+    ┌─────────────────────────┐
+    │  Vercel Frontend (SPA)  │
+    │  React 18 + Vite 5      │
+    │  SPA Rewrites: vercel.json │
+    └───────────┬─────────────┘
+                │
+                │ HTTPS REST API calls (`/api/*`)
+                │ WSS WebSocket upgrade (`Socket.IO`)
+                ▼
+    ┌───────────────────────────────────────────────┐
+    │  Render Backend Web Service                   │
+    │  Node.js + Express + Socket.IO                │
+    │  Centralized config: backend/src/config/env.js│
+    │  CORS: Dynamic multi-origin (Vercel/Custom)   │
+    │  Host binding: 0.0.0.0:PORT                   │
+    └───────────┬───────────────────────────────────┘
+                │
+        ┌───────┴───────────────────┬─────────────────────┐
+        ▼                           ▼                     ▼
+┌──────────────────┐    ┌────────────────────┐   ┌───────────────────────┐
+│  MongoDB Atlas   │    │ Google Maps Platform│   │ MeitY Bhashini APIs   │
+│  Managed Replica │    │ Maps JS, Places,   │   │ ULCA Machine Trans-   │
+│  Connection Pool │    │ Directions, GIS    │   │ lation, Regional TTS  │
+└──────────────────┘    └────────────────────┘   └───────────────────────┘
+```
+
+### Production Security & Isolation Principles
+1. **Frontend Secret Isolation**: All variables exposed to Vite must begin with `VITE_`. No database URIs, JWT secrets, or backend API keys are ever bundled.
+2. **Dynamic CORS Whitelisting**: The backend supports multiple origins (`CORS_ORIGINS`), allowing Vercel production and preview deployments (`*.vercel.app`) with credentials enabled.
+3. **Fail-Safe Third-Party Integrations**:
+   - Google Maps gracefully falls back to Leaflet / OpenStreetMap if `VITE_GOOGLE_MAPS_API_KEY` is missing or invalid.
+   - Bhashini translation proxy gracefully falls back to static dictionaries and original text if credentials are missing or offline.
+   - Protected terms ("AgriNexus", Centre Codes, Currency amounts) are masked during translation and restored verbatim.
 

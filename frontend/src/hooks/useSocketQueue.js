@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5001';
+// Normalize socket server URL (strips trailing slash or trailing /api)
+const rawSocketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5001';
+const SOCKET_URL = rawSocketUrl.trim().replace(/\/+$/, '').replace(/\/api$/, '');
 
 export const useSocketQueue = ({ centreId, farmerId, onQueueUpdate }) => {
   const [connectionStatus, setConnectionStatus] = useState('connecting'); // connected, reconnecting, disconnected

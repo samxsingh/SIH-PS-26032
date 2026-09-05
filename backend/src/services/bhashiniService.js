@@ -39,16 +39,18 @@ const PROTECTED_TERMS = [
   'RTGS'
 ];
 
+const env = require('../config/env');
+
 // In-memory translation cache: key -> { translatedText, timestamp }
 const translationCache = new Map();
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 class BhashiniService {
   constructor() {
-    this.apiKey = process.env.BHASHINI_API_KEY || '';
-    this.userId = process.env.BHASHINI_USER_ID || '';
-    this.pipelineId = process.env.BHASHINI_PIPELINE_ID || '64392f96daac500b55c543d6';
-    this.inferenceUrl = process.env.BHASHINI_INFERENCE_URL || 'https://dhruva-api.bhashini.gov.in/services/inference/pipeline';
+    this.apiKey = env.BHASHINI_API_KEY || '';
+    this.userId = env.BHASHINI_USER_ID || '';
+    this.pipelineId = env.BHASHINI_PIPELINE_ID || '64392f96daac500b55c543d6';
+    this.inferenceUrl = env.BHASHINI_API_URL || 'https://dhruva-api.bhashini.gov.in/services/inference/pipeline';
   }
 
   /**

@@ -1,25 +1,44 @@
-require('dotenv').config();
 const http = require('http');
 const jwt = require('jsonwebtoken');
 const { Server } = require('socket.io');
+const env = require('./src/config/env');
 const app = require('./src/app');
 const connectDB = require('./src/config/db');
-const validateEnv = require('./src/config/envValidator');
 
-// Validate critical environment variables on startup
-validateEnv();
-
-const PORT = process.env.PORT || 5001;
+// Strictly validate required environment configuration on server startup
+env.validateConfig();
 
 // Create HTTP Server
 const server = http.createServer(app);
 
-// Initialize Socket.IO Server
+// Initialize Socket.IO Server with Production-Ready CORS & Multi-Transport Support
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
-    methods: ['GET', 'POST']
-  }
+    origin: (origin, callback) => {
+      // Allow non-browser socket clients (e.g. mobile apps, test runners)
+      if (!origin) return callback(null, true);
+
+      const allowed = env.SOCKET_CORS_ORIGINS;
+      if (allowed.includes('*') || allowed.includes(origin)) {
+        return callback(null, true);
+      }
+
+      // Support Vercel deployment domains
+      if (origin.endsWith('.vercel.app') && allowed.some((o) => o.includes('vercel.app'))) {
+        return callback(null, true);
+      }
+
+      // Allow localhost in development
+      if (!env.IS_PRODUCTION && (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
+        return callback(null, true);
+      }
+
+      return callback(new Error(`[Socket.IO] CORS blocked for origin: ${origin}`));
+    },
+    methods: ['GET', 'POST'],
+    credentials: true
+  },
+  transports: ['websocket', 'polling']
 });
 
 // Socket Authentication Middleware
@@ -30,7 +49,7 @@ io.use((socket, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'super_secret_sih_2026_gov_key_change_in_production');
+    const decoded = jwt.verify(token, env.JWT_SECRET);
     socket.user = decoded;
     next();
   } catch (err) {
@@ -77,18 +96,21 @@ io.on('connection', (socket) => {
 // Attach Socket.IO instance to app for controller/service access
 app.set('io', io);
 
-// Start Server & Connect DB
+// Start Server & Connect DB (Binds to 0.0.0.0 for Render hosting compatibility)
 const startServer = async () => {
   await connectDB();
   
-  server.listen(PORT, () => {
+  server.listen(env.PORT, env.HOST, () => {
     console.log(`=======================================================`);
-    console.log(` 🌾 AgriNexus API & Command Centre`);
-    console.log(` 🚀 Server listening on port ${PORT}`);
-    console.log(` 🔗 Health check: http://localhost:${PORT}/api/health`);
-    console.log(` 🛡️  Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(` 🌾 AgriNexus API & Command Centre Server`);
+    console.log(` 🚀 Listening on ${env.HOST}:${env.PORT}`);
+    console.log(` 🔗 Health check: http://localhost:${env.PORT}/api/health`);
+    console.log(` 🌐 Frontend CORS Allowed: ${env.CORS_ORIGINS.join(', ')}`);
+    console.log(` 🛡️  Environment: ${env.NODE_ENV}`);
     console.log(`=======================================================`);
   });
 };
 
 startServer();
+
+module.exports = { server, app, io };
