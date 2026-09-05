@@ -28,6 +28,7 @@ import {
   MapPin,
   Sparkles
 } from 'lucide-react';
+import DemoAccountsModal from '../../components/auth/DemoAccountsModal';
 
 export const LoginPage = ({ defaultRole }) => {
   const { t } = useTranslation();
@@ -53,30 +54,14 @@ export const LoginPage = ({ defaultRole }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
   const [demoLoadedRole, setDemoLoadedRole] = useState(null);
+  const [isDemoModalOpen, setIsDemoModalOpen] = useState(false);
 
-  // Authoritative demo credentials matching backend seed data
-  const DEMO_CREDENTIALS = {
-    FARMER: {
-      identifier: '9876543210',
-      password: 'password123'
-    },
-    CENTRE_STAFF: {
-      identifier: 'gomtinagar.centre@agrinexus.demo',
-      password: 'password123'
-    },
-    ADMIN: {
-      identifier: 'admin@agrinexus.gov.in',
-      password: 'adminpassword'
-    }
-  };
-
-  // Populate form with existing demo credentials without auto-submitting
-  const handleUseDemoAccount = () => {
-    const creds = DEMO_CREDENTIALS[selectedRole];
-    if (creds) {
-      setIdentifier(creds.identifier);
-      setPassword(creds.password);
-      setDemoLoadedRole(selectedRole);
+  // Handle demo account selection from modal without auto-submitting
+  const handleSelectDemoAccount = (account) => {
+    if (account) {
+      setIdentifier(account.identifier);
+      setPassword(account.password);
+      setDemoLoadedRole(account.category || selectedRole);
       setErrorMsg(null);
     }
   };
@@ -523,11 +508,11 @@ export const LoginPage = ({ defaultRole }) => {
                   <div className="flex items-center justify-end mt-2">
                     <button
                       type="button"
-                      onClick={handleUseDemoAccount}
+                      onClick={() => setIsDemoModalOpen(true)}
                       className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-xs transition-colors cursor-pointer shadow-xs active:scale-95"
                     >
                       <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-                      <span>{t('login.demo_admin')}</span>
+                      <span>{t('login.demo_accounts_btn', '✨ Demo Accounts')}</span>
                       {demoLoadedRole === 'ADMIN' && (
                         <span className="text-[10px] text-forest-green font-black ml-1 flex items-center gap-0.5">
                           ✓
@@ -564,11 +549,11 @@ export const LoginPage = ({ defaultRole }) => {
                   <div className="flex items-center justify-end mt-2">
                     <button
                       type="button"
-                      onClick={handleUseDemoAccount}
+                      onClick={() => setIsDemoModalOpen(true)}
                       className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold text-blue-900 bg-blue-50 hover:bg-blue-100 border border-blue-300 rounded-xs transition-colors cursor-pointer shadow-xs active:scale-95"
                     >
                       <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-                      <span>{t('login.demo_staff')}</span>
+                      <span>{t('login.demo_accounts_btn', '✨ Demo Accounts')}</span>
                       {demoLoadedRole === 'CENTRE_STAFF' && (
                         <span className="text-[10px] text-forest-green font-black ml-1 flex items-center gap-0.5">
                           ✓
@@ -606,11 +591,11 @@ export const LoginPage = ({ defaultRole }) => {
                   <div className="flex items-center justify-end mt-2">
                     <button
                       type="button"
-                      onClick={handleUseDemoAccount}
+                      onClick={() => setIsDemoModalOpen(true)}
                       className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold text-forest-green bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-xs transition-colors cursor-pointer shadow-xs active:scale-95"
                     >
                       <Sparkles className="w-3.5 h-3.5 text-forest-green" />
-                      <span>{t('login.demo_farmer')}</span>
+                      <span>{t('login.demo_accounts_btn', '✨ Demo Accounts')}</span>
                       {demoLoadedRole === 'FARMER' && (
                         <span className="text-[10px] text-forest-green font-black ml-1 flex items-center gap-0.5">
                           ✓
@@ -738,6 +723,15 @@ export const LoginPage = ({ defaultRole }) => {
           {t('landing.footer_gov')}
         </p>
       </footer>
+
+      {/* Demo Accounts Selector Modal */}
+      <DemoAccountsModal
+        isOpen={isDemoModalOpen}
+        onClose={() => setIsDemoModalOpen(false)}
+        role={selectedRole}
+        activeIdentifier={identifier}
+        onSelectAccount={handleSelectDemoAccount}
+      />
     </div>
   );
 };

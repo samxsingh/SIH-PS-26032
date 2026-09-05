@@ -258,6 +258,52 @@ const seedData = async () => {
       languagePreference: 'en'
     });
 
+    // Additional Demo Farmers
+    await User.create([
+      {
+        fullName: 'Rahul Sharma',
+        phone: '9876543220',
+        email: 'rahul.sharma@agrinexus.demo',
+        passwordHash: commonPasswordHash,
+        role: 'FARMER',
+        district: 'Lucknow',
+        state: 'Uttar Pradesh',
+        villageName: 'Malihabad',
+        stateCode: 'UP',
+        districtCode: 'UP_LUK',
+        localityCode: 'UP_LUK_02',
+        languagePreference: 'en'
+      },
+      {
+        fullName: 'Priya Verma',
+        phone: '9876543221',
+        email: 'priya.verma@agrinexus.demo',
+        passwordHash: commonPasswordHash,
+        role: 'FARMER',
+        district: 'Lucknow',
+        state: 'Uttar Pradesh',
+        villageName: 'Bakshi Ka Talab',
+        stateCode: 'UP',
+        districtCode: 'UP_LUK',
+        localityCode: 'UP_LUK_01',
+        languagePreference: 'en'
+      },
+      {
+        fullName: 'Amit Yadav',
+        phone: '9876543202',
+        email: 'amit.yadav@agrinexus.demo',
+        passwordHash: commonPasswordHash,
+        role: 'FARMER',
+        district: 'Lucknow',
+        state: 'Uttar Pradesh',
+        villageName: 'Mohan Road',
+        stateCode: 'UP',
+        districtCode: 'UP_LUK',
+        localityCode: 'UP_LUK_11',
+        languagePreference: 'en'
+      }
+    ]);
+
     // Appointed Centre Head for Gomti Nagar Centre
     const appointedHead = await User.create({
       fullName: 'Satish Kumar',
@@ -328,6 +374,61 @@ const seedData = async () => {
         districtCode: 'UP_LUK'
       }
     ]);
+
+    // Centre Heads for other Lucknow Mandi Centres
+    if (centres[1]) {
+      const headAliganj = await User.create({
+        fullName: 'Kishan Seva Manager — Aliganj',
+        phone: '9876543231',
+        email: 'aliganj.centre@agrinexus.demo',
+        passwordHash: commonPasswordHash,
+        role: 'CENTRE_STAFF',
+        designation: 'Centre Head',
+        isCentreHead: true,
+        assignedCentreId: centres[1]._id,
+        accountStatus: 'ACTIVE',
+        district: 'Lucknow',
+        state: 'Uttar Pradesh'
+      });
+      centres[1].currentHeadId = headAliganj._id;
+      await centres[1].save();
+    }
+
+    if (centres[2]) {
+      const headIndira = await User.create({
+        fullName: 'Grain Mandi Incharge — Indira Nagar',
+        phone: '9876543232',
+        email: 'indiranagar.centre@agrinexus.demo',
+        passwordHash: commonPasswordHash,
+        role: 'CENTRE_STAFF',
+        designation: 'Centre Head',
+        isCentreHead: true,
+        assignedCentreId: centres[2]._id,
+        accountStatus: 'ACTIVE',
+        district: 'Lucknow',
+        state: 'Uttar Pradesh'
+      });
+      centres[2].currentHeadId = headIndira._id;
+      await centres[2].save();
+    }
+
+    if (centres[3]) {
+      const headAlambagh = await User.create({
+        fullName: 'APMC Officer — Alambagh',
+        phone: '9876543233',
+        email: 'alambagh.centre@agrinexus.demo',
+        passwordHash: commonPasswordHash,
+        role: 'CENTRE_STAFF',
+        designation: 'Centre Head',
+        isCentreHead: true,
+        assignedCentreId: centres[3]._id,
+        accountStatus: 'ACTIVE',
+        district: 'Lucknow',
+        state: 'Uttar Pradesh'
+      });
+      centres[3].currentHeadId = headAlambagh._id;
+      await centres[3].save();
+    }
 
     const admin = await User.create({
       fullName: 'District Magistrate / Administrator',

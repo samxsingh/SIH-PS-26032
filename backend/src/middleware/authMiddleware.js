@@ -32,6 +32,69 @@ const initDemoUsers = () => {
     updatedAt: new Date()
   };
 
+  const farmer2 = {
+    _id: 'user_farmer_02',
+    id: 'user_farmer_02',
+    fullName: 'Rahul Sharma',
+    phone: '9876543220',
+    email: 'rahul.sharma@agrinexus.demo',
+    role: 'FARMER',
+    languagePreference: 'en',
+    district: 'Lucknow',
+    state: 'Uttar Pradesh',
+    villageName: 'Malihabad',
+    stateCode: 'UP',
+    districtCode: 'UP_LUK',
+    localityCode: 'UP_LUK_02',
+    locationSource: 'REGISTERED',
+    isActive: true,
+    passwordHash: commonHash,
+    createdAt: new Date(),
+    updatedAt: new Date()
+  };
+
+  const farmer3 = {
+    _id: 'user_farmer_03',
+    id: 'user_farmer_03',
+    fullName: 'Priya Verma',
+    phone: '9876543221',
+    email: 'priya.verma@agrinexus.demo',
+    role: 'FARMER',
+    languagePreference: 'en',
+    district: 'Lucknow',
+    state: 'Uttar Pradesh',
+    villageName: 'Bakshi Ka Talab',
+    stateCode: 'UP',
+    districtCode: 'UP_LUK',
+    localityCode: 'UP_LUK_01',
+    locationSource: 'REGISTERED',
+    isActive: true,
+    passwordHash: commonHash,
+    createdAt: new Date(),
+    updatedAt: new Date()
+  };
+
+  const farmer4 = {
+    _id: 'user_farmer_04',
+    id: 'user_farmer_04',
+    fullName: 'Amit Yadav',
+    phone: '9876543202',
+    email: 'amit.yadav@agrinexus.demo',
+    role: 'FARMER',
+    languagePreference: 'en',
+    district: 'Lucknow',
+    state: 'Uttar Pradesh',
+    villageName: 'Mohan Road',
+    stateCode: 'UP',
+    districtCode: 'UP_LUK',
+    localityCode: 'UP_LUK_11',
+    locationSource: 'REGISTERED',
+    isActive: true,
+    passwordHash: commonHash,
+    createdAt: new Date(),
+    updatedAt: new Date()
+  };
+
   const staff = {
     _id: 'user_staff_01',
     id: 'user_staff_01',
@@ -149,8 +212,14 @@ const initDemoUsers = () => {
   };
 
   inMemoryUsers.set(farmer.id, farmer);
+  inMemoryUsers.set(farmer2.id, farmer2);
+  inMemoryUsers.set(farmer3.id, farmer3);
+  inMemoryUsers.set(farmer4.id, farmer4);
   inMemoryUsers.set(staff.id, staff);
   inMemoryUsers.set('user_staff_sehore_alias', { ...staff, id: 'user_staff_sehore_alias', email: 'sehore.centre@agrinexus.demo' });
+  inMemoryUsers.set('user_staff_aliganj_alias', { ...staff, id: 'user_staff_aliganj_alias', email: 'aliganj.centre@agrinexus.demo' });
+  inMemoryUsers.set('user_staff_indiranagar_alias', { ...staff, id: 'user_staff_indiranagar_alias', email: 'indiranagar.centre@agrinexus.demo' });
+  inMemoryUsers.set('user_staff_alambagh_alias', { ...staff, id: 'user_staff_alambagh_alias', email: 'alambagh.centre@agrinexus.demo' });
   inMemoryUsers.set(staff2.id, staff2);
   inMemoryUsers.set(staff3.id, staff3);
   inMemoryUsers.set(staff4.id, staff4);
