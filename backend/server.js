@@ -4,6 +4,10 @@ const jwt = require('jsonwebtoken');
 const { Server } = require('socket.io');
 const app = require('./src/app');
 const connectDB = require('./src/config/db');
+const validateEnv = require('./src/config/envValidator');
+
+// Validate critical environment variables on startup
+validateEnv();
 
 const PORT = process.env.PORT || 5001;
 

@@ -17,7 +17,7 @@ const savedLanguage = localStorage.getItem('languagePreference') || 'en';
 
 // Humanize raw key so dots like 'farmer.book_slot' never appear raw in UI
 const formatMissingKey = (key) => {
-  if (process.env.NODE_ENV !== 'production') {
+  if (import.meta.env.DEV) {
     console.warn(`[i18n Warning] Missing translation key: "${key}" in language: "${i18n.language || savedLanguage}"`);
   }
   const segment = key.includes('.') ? key.split('.').pop() : key;
@@ -37,7 +37,7 @@ i18n
     returnNull: false,
     parseMissingKeyHandler: formatMissingKey,
     missingKeyHandler: (lng, ns, key) => {
-      if (process.env.NODE_ENV !== 'production') {
+      if (import.meta.env.DEV) {
         console.warn(`[i18n Missing] [${lng}:${ns}] "${key}"`);
       }
     },
