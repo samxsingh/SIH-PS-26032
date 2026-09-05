@@ -6,6 +6,11 @@ const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5001';
 export const useSocketQueue = ({ centreId, farmerId, onQueueUpdate }) => {
   const [connectionStatus, setConnectionStatus] = useState('connecting'); // connected, reconnecting, disconnected
   const socketRef = useRef(null);
+  const onQueueUpdateRef = useRef(onQueueUpdate);
+
+  useEffect(() => {
+    onQueueUpdateRef.current = onQueueUpdate;
+  }, [onQueueUpdate]);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -37,12 +42,12 @@ export const useSocketQueue = ({ centreId, farmerId, onQueueUpdate }) => {
 
     socket.on('queue:updated', (data) => {
       console.log('[Socket Event] queue:updated received:', data);
-      if (onQueueUpdate) onQueueUpdate(data);
+      if (onQueueUpdateRef.current) onQueueUpdateRef.current(data);
     });
 
     socket.on('queue:called', (data) => {
       console.log('[Socket Event] queue:called received:', data);
-      if (onQueueUpdate) onQueueUpdate(data);
+      if (onQueueUpdateRef.current) onQueueUpdateRef.current(data);
     });
 
     socket.on('connect_error', (err) => {

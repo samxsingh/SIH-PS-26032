@@ -25,7 +25,8 @@ import {
   XCircle,
   AlertTriangle,
   RefreshCw,
-  MapPin
+  MapPin,
+  Sparkles
 } from 'lucide-react';
 
 export const LoginPage = ({ defaultRole }) => {
@@ -51,6 +52,34 @@ export const LoginPage = ({ defaultRole }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
+  const [demoLoadedRole, setDemoLoadedRole] = useState(null);
+
+  // Authoritative demo credentials matching backend seed data
+  const DEMO_CREDENTIALS = {
+    FARMER: {
+      identifier: '9876543210',
+      password: 'password123'
+    },
+    CENTRE_STAFF: {
+      identifier: 'gomtinagar.centre@agrinexus.demo',
+      password: 'password123'
+    },
+    ADMIN: {
+      identifier: 'admin@agrinexus.gov.in',
+      password: 'adminpassword'
+    }
+  };
+
+  // Populate form with existing demo credentials without auto-submitting
+  const handleUseDemoAccount = () => {
+    const creds = DEMO_CREDENTIALS[selectedRole];
+    if (creds) {
+      setIdentifier(creds.identifier);
+      setPassword(creds.password);
+      setDemoLoadedRole(selectedRole);
+      setErrorMsg(null);
+    }
+  };
 
   // Dedicated Pending Approval / Application Status State
   const [pendingApprovalData, setPendingApprovalData] = useState(null);
@@ -65,6 +94,7 @@ export const LoginPage = ({ defaultRole }) => {
       setIdentifier('');
       setPassword('');
       setErrorMsg(null);
+      setDemoLoadedRole(null);
     }
   }, [searchParams]);
 
@@ -453,7 +483,7 @@ export const LoginPage = ({ defaultRole }) => {
                 <div>
                   <strong className="font-bold block">Authorized Procurement Centre Access</strong>
                   <span className="text-[11px] text-blue-900 leading-relaxed block mt-0.5">
-                    Your centre account must be approved by a Government Administrator before operations commence.
+                    {t('login.notice_staff')}
                   </span>
                 </div>
               </div>
@@ -465,7 +495,7 @@ export const LoginPage = ({ defaultRole }) => {
                 <div>
                   <strong className="font-bold block">Demonstration Administrator Account</strong>
                   <span className="text-[11px] text-amber-900 leading-relaxed block mt-0.5">
-                    Administrator access is restricted to the authorized AgriNexus Government account.
+                    {t('login.notice_admin')}
                   </span>
                 </div>
               </div>
@@ -480,7 +510,7 @@ export const LoginPage = ({ defaultRole }) => {
                     htmlFor="login-admin-email"
                     className="block text-xs font-bold uppercase tracking-wider text-dark-neutral mb-1.5"
                   >
-                    OFFICIAL GOVERNMENT EMAIL <span className="text-red-600">*</span>
+                    {t('login.email_address')} <span className="text-red-600">*</span>
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-dark-neutral-muted">
@@ -491,14 +521,29 @@ export const LoginPage = ({ defaultRole }) => {
                       type="email"
                       required
                       value={identifier}
-                      onChange={(e) => setIdentifier(e.target.value)}
+                      onChange={(e) => {
+                        setIdentifier(e.target.value);
+                        setDemoLoadedRole(null);
+                      }}
                       placeholder="Enter official government email"
                       className="w-full pl-10 pr-4 py-3 min-h-[48px] rounded-xs input-tactile bg-white text-dark-neutral placeholder:text-dark-neutral-muted shadow-[2px_2px_0px_#22252A] text-sm font-semibold"
                     />
                   </div>
-                  <p className="text-[11px] text-dark-neutral-muted mt-1 font-medium">
-                    Demo Account: <code className="bg-amber-50 px-1 py-0.5 border border-amber-300 text-amber-900 rounded-xs">admin@agrinexus.gov.in</code> (Demonstration Administrator Account)
-                  </p>
+                  <div className="flex items-center justify-end mt-2">
+                    <button
+                      type="button"
+                      onClick={handleUseDemoAccount}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-xs transition-colors cursor-pointer shadow-xs active:scale-95"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                      <span>{t('login.demo_admin')}</span>
+                      {demoLoadedRole === 'ADMIN' && (
+                        <span className="text-[10px] text-forest-green font-black ml-1 flex items-center gap-0.5">
+                          ✓
+                        </span>
+                      )}
+                    </button>
+                  </div>
                 </div>
               ) : selectedRole === 'CENTRE_STAFF' ? (
                 <div>
@@ -506,7 +551,7 @@ export const LoginPage = ({ defaultRole }) => {
                     htmlFor="login-staff-email"
                     className="block text-xs font-bold uppercase tracking-wider text-dark-neutral mb-1.5"
                   >
-                    Official Centre Email Address <span className="text-red-600">*</span>
+                    {t('login.email_address')} <span className="text-red-600">*</span>
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-dark-neutral-muted">
@@ -517,14 +562,29 @@ export const LoginPage = ({ defaultRole }) => {
                       type="email"
                       required
                       value={identifier}
-                      onChange={(e) => setIdentifier(e.target.value)}
+                      onChange={(e) => {
+                        setIdentifier(e.target.value);
+                        setDemoLoadedRole(null);
+                      }}
                       placeholder="e.g. gomtinagar.centre@agrinexus.demo"
                       className="w-full pl-10 pr-4 py-3 min-h-[48px] rounded-xs input-tactile bg-white text-dark-neutral placeholder:text-dark-neutral-muted shadow-[2px_2px_0px_#22252A] text-sm font-semibold"
                     />
                   </div>
-                  <p className="text-[11px] text-dark-neutral-muted mt-1 font-medium">
-                    Demo Account: <code className="bg-blue-50 px-1 py-0.5 border border-blue-300 text-blue-900 rounded-xs">gomtinagar.centre@agrinexus.demo</code> (Password: <code>password123</code>)
-                  </p>
+                  <div className="flex items-center justify-end mt-2">
+                    <button
+                      type="button"
+                      onClick={handleUseDemoAccount}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold text-blue-900 bg-blue-50 hover:bg-blue-100 border border-blue-300 rounded-xs transition-colors cursor-pointer shadow-xs active:scale-95"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                      <span>{t('login.demo_staff')}</span>
+                      {demoLoadedRole === 'CENTRE_STAFF' && (
+                        <span className="text-[10px] text-forest-green font-black ml-1 flex items-center gap-0.5">
+                          ✓
+                        </span>
+                      )}
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div>
@@ -544,14 +604,29 @@ export const LoginPage = ({ defaultRole }) => {
                       required
                       maxLength={10}
                       value={identifier}
-                      onChange={(e) => setIdentifier(e.target.value.replace(/\D/g, ''))}
+                      onChange={(e) => {
+                        setIdentifier(e.target.value.replace(/\D/g, ''));
+                        setDemoLoadedRole(null);
+                      }}
                       placeholder="9876543210"
                       className="w-full pl-10 pr-4 py-3 min-h-[48px] rounded-xs input-tactile bg-white text-dark-neutral placeholder:text-dark-neutral-muted shadow-[2px_2px_0px_#22252A] text-sm font-semibold tracking-wider font-mono"
                     />
                   </div>
-                  <p className="text-[11px] text-dark-neutral-muted mt-1 font-medium">
-                    {t('login.demo_account_label')} <code className="bg-emerald-50 px-1 py-0.5 border border-emerald-300 text-emerald-900 rounded-xs">9876543210</code> ({t('auth.password')}: <code>password123</code>)
-                  </p>
+                  <div className="flex items-center justify-end mt-2">
+                    <button
+                      type="button"
+                      onClick={handleUseDemoAccount}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold text-forest-green bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-xs transition-colors cursor-pointer shadow-xs active:scale-95"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-forest-green" />
+                      <span>{t('login.demo_farmer')}</span>
+                      {demoLoadedRole === 'FARMER' && (
+                        <span className="text-[10px] text-forest-green font-black ml-1 flex items-center gap-0.5">
+                          ✓
+                        </span>
+                      )}
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -572,7 +647,10 @@ export const LoginPage = ({ defaultRole }) => {
                     type={showPassword ? 'text' : 'password'}
                     required
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      setDemoLoadedRole(null);
+                    }}
                     placeholder="••••••••"
                     className="w-full pl-10 pr-12 py-3 min-h-[48px] rounded-xs input-tactile bg-white text-dark-neutral placeholder:text-dark-neutral-muted shadow-[2px_2px_0px_#22252A] text-sm font-semibold"
                   />
@@ -598,8 +676,8 @@ export const LoginPage = ({ defaultRole }) => {
                   selectedRole === 'FARMER'
                     ? t('login.signing_in_farmer')
                     : selectedRole === 'CENTRE_STAFF'
-                    ? 'Signing In to Procurement Centre...'
-                    : 'Signing In as Administrator...'
+                    ? t('login.signing_in_staff')
+                    : t('login.signing_in_admin')
                 }
                 className={`min-h-[48px] text-base font-black shadow-brutal-sm mt-3 ${
                   selectedRole === 'CENTRE_STAFF'
@@ -612,7 +690,9 @@ export const LoginPage = ({ defaultRole }) => {
                 <span>
                   {selectedRole === 'FARMER'
                     ? t('login.sign_in_farmer_btn')
-                    : t('common.save')}
+                    : selectedRole === 'CENTRE_STAFF'
+                    ? t('login.sign_in_staff_btn')
+                    : t('login.sign_in_admin_btn')}
                 </span>
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>

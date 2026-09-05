@@ -378,10 +378,23 @@ export const MyBookingsPage = () => {
                 {/* Assigned Centre Staff Operator */}
                 <div className="bg-forest-green-light/40 border border-dark-neutral/30 rounded-xs p-2.5 text-xs flex items-center justify-between mb-2">
                   <span className="text-[11px] font-bold text-dark-neutral">
-                    {t('farmer.assigned_operator_label')} <strong className="text-forest-green">{booking.assignedStaffName || 'Ravi Sharma'}</strong>
-                    {booking.assignedStaffDesignation && <span className="text-dark-neutral-muted"> ({booking.assignedStaffDesignation})</span>}
+                    {t('farmer.assigned_operator_label')}{' '}
+                    {booking.assignedStaffName ? (
+                      <>
+                        <strong className="text-forest-green">{booking.assignedStaffName}</strong>
+                        {booking.assignedStaffDesignation && (
+                          <span className="text-dark-neutral-muted"> ({booking.assignedStaffDesignation})</span>
+                        )}
+                      </>
+                    ) : (
+                      <strong className="text-amber-700 italic font-semibold">
+                        {t('farmer.staff_assignment_pending', 'Staff assignment pending')}
+                      </strong>
+                    )}
                   </span>
-                  <Badge variant="success" size="sm">{t('farmer.status_assigned')}</Badge>
+                  <Badge variant={booking.assignedStaffName ? 'success' : 'neutral'} size="sm">
+                    {booking.assignedStaffName ? t('farmer.status_assigned') : t('farmer.operator_pending_assignment')}
+                  </Badge>
                 </div>
 
                 <div className="flex justify-between items-center pt-2 text-xs flex-wrap gap-2">

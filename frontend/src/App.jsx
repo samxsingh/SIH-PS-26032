@@ -19,118 +19,149 @@ import FarmerProcurementPage from './pages/farmer/FarmerProcurementPage';
 import StaffDashboardPage from './pages/staff/StaffDashboardPage';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 import ProtectedRoute from './routes/ProtectedRoute';
+import ErrorBoundary from './components/common/ErrorBoundary';
 
 export function App() {
   return (
     <LanguageProvider>
       <AuthProvider>
         <BrowserRouter>
-          <Routes>
-            {/* Public Landing & Access / Role-Selection Routes */}
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/access" element={<AccessPage />} />
-            <Route path="/auth" element={<AccessPage />} />
+          <ErrorBoundary>
+            <Routes>
+              {/* Public Landing & Access / Role-Selection Routes */}
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/access" element={<AccessPage />} />
+              <Route path="/auth" element={<AccessPage />} />
 
-            {/* Role-Specific Login & Registration Routes */}
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/auth/login" element={<LoginPage />} />
-            <Route path="/signup" element={<SignupPage />} />
-            <Route path="/auth/register" element={<SignupPage />} />
+              {/* Role-Specific Login & Registration Routes */}
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/auth/login" element={<LoginPage />} />
+              <Route path="/signup" element={<SignupPage />} />
+              <Route path="/auth/register" element={<SignupPage />} />
 
-            <Route path="/login/farmer" element={<LoginPage defaultRole="FARMER" />} />
-            <Route path="/farmer/login" element={<LoginPage defaultRole="FARMER" />} />
-            <Route path="/farmer/register" element={<SignupPage />} />
-            <Route path="/auth/farmer/login" element={<LoginPage defaultRole="FARMER" />} />
-            <Route path="/auth/farmer/register" element={<SignupPage />} />
+              <Route path="/login/farmer" element={<LoginPage defaultRole="FARMER" />} />
+              <Route path="/farmer/login" element={<LoginPage defaultRole="FARMER" />} />
+              <Route path="/farmer/register" element={<SignupPage />} />
+              <Route path="/auth/farmer/login" element={<LoginPage defaultRole="FARMER" />} />
+              <Route path="/auth/farmer/register" element={<SignupPage />} />
 
-            <Route path="/login/staff" element={<LoginPage defaultRole="CENTRE_STAFF" />} />
-            <Route path="/staff/login" element={<LoginPage defaultRole="CENTRE_STAFF" />} />
-            <Route path="/staff/register" element={<StaffRegisterPage />} />
-            <Route path="/auth/staff/login" element={<LoginPage defaultRole="CENTRE_STAFF" />} />
-            <Route path="/auth/staff/register" element={<StaffRegisterPage />} />
+              <Route path="/login/staff" element={<LoginPage defaultRole="CENTRE_STAFF" />} />
+              <Route path="/staff/login" element={<LoginPage defaultRole="CENTRE_STAFF" />} />
+              <Route path="/staff/register" element={<StaffRegisterPage />} />
+              <Route path="/auth/staff/login" element={<LoginPage defaultRole="CENTRE_STAFF" />} />
+              <Route path="/auth/staff/register" element={<StaffRegisterPage />} />
 
-            <Route path="/login/admin" element={<LoginPage defaultRole="ADMIN" />} />
-            <Route path="/admin/login" element={<LoginPage defaultRole="ADMIN" />} />
-            <Route path="/auth/admin/login" element={<LoginPage defaultRole="ADMIN" />} />
+              <Route path="/login/admin" element={<LoginPage defaultRole="ADMIN" />} />
+              <Route path="/admin/login" element={<LoginPage defaultRole="ADMIN" />} />
+              <Route path="/auth/admin/login" element={<LoginPage defaultRole="ADMIN" />} />
 
-            {/* Dashboard Redirect Aliases */}
-            <Route path="/farmer/dashboard" element={<Navigate to="/farmer" replace />} />
-            <Route path="/staff/dashboard" element={<Navigate to="/staff" replace />} />
-            <Route path="/admin/dashboard" element={<Navigate to="/admin" replace />} />
+              {/* Dashboard Redirect Aliases */}
+              <Route path="/farmer/dashboard" element={<Navigate to="/farmer" replace />} />
+              <Route path="/staff/dashboard" element={<Navigate to="/staff" replace />} />
+              <Route path="/admin/dashboard" element={<Navigate to="/admin" replace />} />
 
-            {/* Farmer Protected Routes */}
-            <Route
-              path="/farmer"
-              element={
-                <ProtectedRoute allowedRoles={['FARMER']}>
-                  <FarmerDashboardPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/farmer/find-centres"
-              element={
-                <ProtectedRoute allowedRoles={['FARMER']}>
-                  <FindCentresPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/farmer/book-slot"
-              element={
-                <ProtectedRoute allowedRoles={['FARMER']}>
-                  <BookSlotPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/farmer/booking-success"
-              element={
-                <ProtectedRoute allowedRoles={['FARMER']}>
-                  <BookingSuccessPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/farmer/bookings"
-              element={
-                <ProtectedRoute allowedRoles={['FARMER']}>
-                  <MyBookingsPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/farmer/procurement/:bookingId"
-              element={
-                <ProtectedRoute allowedRoles={['FARMER']}>
-                  <FarmerProcurementPage />
-                </ProtectedRoute>
-              }
-            />
+              {/* Farmer Protected Routes */}
+              <Route
+                path="/farmer"
+                element={
+                  <ProtectedRoute allowedRoles={['FARMER']}>
+                    <FarmerDashboardPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/farmer/find-centres"
+                element={
+                  <ProtectedRoute allowedRoles={['FARMER']}>
+                    <FindCentresPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/farmer/book-slot"
+                element={
+                  <ProtectedRoute allowedRoles={['FARMER']}>
+                    <BookSlotPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/farmer/booking-success"
+                element={
+                  <ProtectedRoute allowedRoles={['FARMER']}>
+                    <BookingSuccessPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/farmer/bookings"
+                element={
+                  <ProtectedRoute allowedRoles={['FARMER']}>
+                    <MyBookingsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/farmer/my-bookings"
+                element={<Navigate to="/farmer/bookings" replace />}
+              />
+              <Route
+                path="/farmer/procurement/:bookingId"
+                element={
+                  <ProtectedRoute allowedRoles={['FARMER']}>
+                    <FarmerProcurementPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/farmer/track-journey/:bookingId"
+                element={
+                  <ProtectedRoute allowedRoles={['FARMER']}>
+                    <FarmerProcurementPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/farmer/bookings/:bookingId/track"
+                element={
+                  <ProtectedRoute allowedRoles={['FARMER']}>
+                    <FarmerProcurementPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/farmer/bookings/:bookingId"
+                element={
+                  <ProtectedRoute allowedRoles={['FARMER']}>
+                    <FarmerProcurementPage />
+                  </ProtectedRoute>
+                }
+              />
 
-            {/* Staff Protected Routes */}
-            <Route
-              path="/staff/*"
-              element={
-                <ProtectedRoute allowedRoles={['CENTRE_STAFF']}>
-                  <StaffDashboardPage />
-                </ProtectedRoute>
-              }
-            />
+              {/* Staff Protected Routes */}
+              <Route
+                path="/staff/*"
+                element={
+                  <ProtectedRoute allowedRoles={['CENTRE_STAFF']}>
+                    <StaffDashboardPage />
+                  </ProtectedRoute>
+                }
+              />
 
-            {/* Admin Protected Routes */}
-            <Route
-              path="/admin/*"
-              element={
-                <ProtectedRoute allowedRoles={['ADMIN']}>
-                  <AdminDashboardPage />
-                </ProtectedRoute>
-              }
-            />
+              {/* Admin Protected Routes */}
+              <Route
+                path="/admin/*"
+                element={
+                  <ProtectedRoute allowedRoles={['ADMIN']}>
+                    <AdminDashboardPage />
+                  </ProtectedRoute>
+                }
+              />
 
-            {/* Catch-all Redirect to Landing Page */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+              {/* Catch-all Redirect to Landing Page */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </ErrorBoundary>
         </BrowserRouter>
       </AuthProvider>
     </LanguageProvider>

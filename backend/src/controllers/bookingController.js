@@ -174,8 +174,84 @@ const cancelBooking = async (req, res, next) => {
   }
 };
 
+const getBookingById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    let booking = null;
+    try {
+      booking = await Booking.findById(id)
+        .populate('centreId', 'name address district centreCode contactPhone location')
+        .populate('farmerId', 'fullName phone district villageName')
+        .lean();
+    } catch (dbErr) {
+      booking = inMemoryBookings.get(id);
+    }
+
+    if (!booking) {
+      booking = inMemoryBookings.get(id);
+      if (!booking) {
+        for (const [, b] of inMemoryBookings) {
+          if (b.id === id || b._id === id || b.bookingReference === id) {
+            booking = b;
+            break;
+          }
+        }
+      }
+    }
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'BOOKING_NOT_FOUND', message: 'Booking not found.' }
+      });
+    }
+
+    // Role-based authorization & ownership check:
+    // If user is a FARMER, ensure the booking belongs to this farmer
+    const userId = req.user.id || req.user._id;
+    if (req.user.role === 'FARMER') {
+      const bookingFarmerId = booking.farmerId?._id ? booking.farmerId._id.toString() : (booking.farmerId ? booking.farmerId.toString() : '');
+      if (bookingFarmerId && bookingFarmerId !== userId.toString()) {
+        return res.status(403).json({
+          success: false,
+          error: { code: 'FORBIDDEN', message: 'You do not have permission to access this booking.' }
+        });
+      }
+    }
+
+    let centre = booking.centreId;
+    if (!centre || typeof centre === 'string') {
+      centre = inMemoryCentres.find((c) => c._id === booking.centreId || c.id === booking.centreId) || inMemoryCentres[0];
+    }
+
+    const bookingObj = booking.toObject ? booking.toObject() : booking;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        ...bookingObj,
+        id: booking._id ? booking._id.toString() : booking.id,
+        centre: {
+          id: centre._id || centre.id,
+          name: centre.name,
+          address: centre.address,
+          contactPhone: centre.contactPhone,
+          centreCode: centre.centreCode,
+          district: centre.district,
+          location: centre.location
+        }
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createFarmerBooking,
   getMyBookings,
-  cancelBooking
+  cancelBooking,
+  getBookingById
 };
+
