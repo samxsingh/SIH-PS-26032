@@ -5,6 +5,36 @@ const Booking = require('../models/Booking');
 const getPaymentStatus = async (req, res, next) => {
   try {
     const { bookingId } = req.params;
+
+    let booking = null;
+    try {
+      booking = await Booking.findById(bookingId);
+    } catch (e) {
+      // Fallback
+    }
+
+    if (booking) {
+      const userId = req.user.id || req.user._id;
+      if (req.user.role === 'FARMER') {
+        const bFarmerId = booking.farmerId?._id ? booking.farmerId._id.toString() : (booking.farmerId ? booking.farmerId.toString() : '');
+        if (bFarmerId && bFarmerId !== userId.toString()) {
+          return res.status(403).json({
+            success: false,
+            error: { code: 'FORBIDDEN', message: 'You do not have permission to view payment details for this booking.' }
+          });
+        }
+      } else if (req.user.role === 'CENTRE_STAFF') {
+        const staffCentreId = req.user.assignedCentreId ? req.user.assignedCentreId.toString() : '';
+        const bCentreId = booking.centreId?._id ? booking.centreId._id.toString() : (booking.centreId ? booking.centreId.toString() : '');
+        if (staffCentreId && bCentreId && staffCentreId !== bCentreId) {
+          return res.status(403).json({
+            success: false,
+            error: { code: 'FORBIDDEN', message: 'Staff can only view payments for their assigned procurement centre.' }
+          });
+        }
+      }
+    }
+
     const payment = await getPaymentStatusByBooking(bookingId);
 
     res.status(200).json({
@@ -27,6 +57,17 @@ const handleUpdatePaymentStage = async (req, res, next) => {
       booking = await Booking.findById(bookingId);
     } catch (e) {
       // Fallback
+    }
+
+    if (booking && req.user.role === 'CENTRE_STAFF') {
+      const staffCentreId = req.user.assignedCentreId ? req.user.assignedCentreId.toString() : '';
+      const bCentreId = booking.centreId?._id ? booking.centreId._id.toString() : (booking.centreId ? booking.centreId.toString() : '');
+      if (staffCentreId && bCentreId && staffCentreId !== bCentreId) {
+        return res.status(403).json({
+          success: false,
+          error: { code: 'FORBIDDEN', message: 'Staff can only update payment stages for their assigned procurement centre.' }
+        });
+      }
     }
 
     const farmerId = booking?.farmerId ? (booking.farmerId._id || booking.farmerId).toString() : req.user.id;

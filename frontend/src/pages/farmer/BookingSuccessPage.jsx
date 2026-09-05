@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import Navbar from '../../components/common/Navbar';
 import Button from '../../components/common/Button';
 import Badge from '../../components/common/Badge';
-import { CheckCircle2, Ticket, Calendar, Clock, MapPin, Sprout, ArrowRight } from 'lucide-react';
+import { CheckCircle2, Ticket, Calendar, Clock, MapPin, Sprout, ArrowRight, ExternalLink, Building2, Navigation } from 'lucide-react';
 
 export const BookingSuccessPage = () => {
   const { t } = useTranslation();
@@ -92,6 +92,24 @@ export const BookingSuccessPage = () => {
               <span className="font-black text-dark-neutral">{booking.cropType} • {booking.estimatedQuantityQuintals} Qtl</span>
             </div>
 
+            {/* Mandi Affiliation and Booking Status */}
+            <div className="flex items-center justify-between text-xs pt-1">
+              <span className="text-dark-neutral-muted uppercase font-bold flex items-center gap-1">
+                <Building2 className="w-3.5 h-3.5 text-forest-green" />
+                <span>Mandi Jurisdiction:</span>
+              </span>
+              <span className="font-bold text-forest-green">
+                {booking.mandiName || 'Lucknow Principal APMC Mandi'}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between text-xs pt-1">
+              <span className="text-dark-neutral-muted uppercase font-bold">Current Lifecycle Status:</span>
+              <span className="font-mono font-bold bg-emerald-100 text-emerald-900 border border-emerald-400 px-2 py-0.5 rounded-xs">
+                {booking.operationalStatus || 'BOOKED (Confirmed)'}
+              </span>
+            </div>
+
             {/* Assigned Centre Staff Operator */}
             <div className="pt-2 border-t-2 border-dark-neutral/10 text-xs space-y-1">
               <div className="flex items-center justify-between">
@@ -117,19 +135,37 @@ export const BookingSuccessPage = () => {
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link to="/farmer/bookings" className="w-full sm:w-auto">
-              <Button variant="primary" size="lg" fullWidth>
-                <Ticket className="w-5 h-5 mr-2" />
-                <span>{t('farmer.view_my_bookings')}</span>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center mb-3">
+            <Link to={`/farmer/procurement/${booking.id || booking._id}`} className="w-full sm:w-auto flex-1">
+              <Button variant="primary" size="lg" fullWidth className="font-black shadow-brutal">
+                <span>View Procurement Journey</span>
+                <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </Link>
 
-            <Link to="/farmer/find-centres" className="w-full sm:w-auto">
-              <Button variant="outline" size="lg" fullWidth>
-                <span>{t('farmer.find_another_centre')}</span>
+            <Link to="/farmer/find-centres" className="w-full sm:w-auto flex-1">
+              <Button variant="outline" size="lg" fullWidth className="font-bold">
+                <span>View Centre on Map</span>
               </Button>
             </Link>
+          </div>
+
+          <div className="text-center">
+            <a
+              href={`https://www.google.com/maps/dir/?api=1&destination=${
+                booking.centre?.location?.coordinates?.[1] || 26.8467
+              },${
+                booking.centre?.location?.coordinates?.[0] || 80.9462
+              }`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-forest-green hover:underline"
+              title="Launches external navigation in your mapping application"
+            >
+              <Navigation className="w-3.5 h-3.5 text-forest-green" />
+              <span>Show Directions in Google Maps</span>
+              <ExternalLink className="w-3 h-3 text-dark-neutral-muted" />
+            </a>
           </div>
         </div>
       </main>

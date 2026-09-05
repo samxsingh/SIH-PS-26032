@@ -43,7 +43,6 @@ export const Navbar = () => {
     if (user.role === 'FARMER') {
       return [
         { label: t('nav.dashboard', 'Dashboard'), to: '/farmer' },
-        { label: t('farmer.action_book_slot', 'Book Slot'), to: '/farmer/find-centres' },
         { label: t('farmer.action_find_centre', 'Find Centres'), to: '/farmer/find-centres' },
         { label: t('farmer.action_my_booking', 'My Bookings & Token'), to: '/farmer/bookings' },
       ];
@@ -85,7 +84,7 @@ export const Navbar = () => {
 
             {/* Desktop Navigation Links for Authenticated Users */}
             {isAuthenticated && navLinks.length > 0 && (
-              <nav className="hidden md:flex items-center gap-1 border-l-2 border-dark-neutral/20 pl-5">
+              <nav className="hidden lg:flex items-center gap-1 border-l-2 border-dark-neutral/20 pl-5">
                 {navLinks.map((link) => {
                   const isActive = location.pathname === link.to;
                   return (
@@ -137,22 +136,22 @@ export const Navbar = () => {
                   </span>
                 </div>
 
-                {/* Logout Button */}
+                {/* Logout Button (desktop/tablet, mobile uses drawer) */}
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={handleLogout}
-                  className="text-red-700 hover:bg-red-50 hover:border-red-600 min-h-[40px] px-2.5 sm:px-3"
+                  className="hidden sm:flex text-red-700 hover:bg-red-50 hover:border-red-600 min-h-[40px] px-2.5 sm:px-3"
                 >
                   <LogOut className="w-4 h-4 sm:mr-1" />
-                  <span className="hidden sm:inline">{t('nav.logout', 'Logout')}</span>
+                  <span>{t('nav.logout', 'Logout')}</span>
                 </Button>
 
-                {/* Mobile Menu Toggle */}
+                {/* Mobile/Tablet Menu Toggle */}
                 {navLinks.length > 0 && (
                   <button
                     onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                    className="md:hidden p-2 rounded-xs border-2 border-dark-neutral bg-warm-ivory text-dark-neutral shadow-[2px_2px_0px_#22252A]"
+                    className="lg:hidden p-2 rounded-xs border-2 border-dark-neutral bg-warm-ivory text-dark-neutral shadow-[2px_2px_0px_#22252A]"
                     aria-label="Toggle navigation menu"
                   >
                     {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -172,9 +171,9 @@ export const Navbar = () => {
         </div>
       </div>
 
-      {/* Mobile Navigation Drawer */}
+      {/* Mobile/Tablet Navigation Drawer */}
       {mobileMenuOpen && isAuthenticated && (
-        <div className="md:hidden border-t-2 border-dark-neutral bg-warm-ivory p-4 space-y-2 animate-page-enter">
+        <div className="lg:hidden border-t-2 border-dark-neutral bg-warm-ivory p-4 space-y-2 animate-page-enter">
           <div className="flex items-center justify-between pb-3 border-b border-dark-neutral/20 mb-2">
             <span className="text-xs font-black text-dark-neutral">{user?.fullName}</span>
             <span className="text-[10px] bg-forest-green text-white px-2 py-0.5 rounded-xs font-black uppercase">
@@ -191,6 +190,17 @@ export const Navbar = () => {
               {link.label}
             </Link>
           ))}
+          <button
+            type="button"
+            onClick={() => {
+              setMobileMenuOpen(false);
+              handleLogout();
+            }}
+            className="w-full text-left px-3 py-2.5 text-xs font-black uppercase tracking-wider rounded-xs border-2 border-red-600 bg-red-50 text-red-700 shadow-[2px_2px_0px_#22252A] flex items-center gap-2 mt-2"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>{t('nav.logout', 'Logout')}</span>
+          </button>
         </div>
       )}
     </header>

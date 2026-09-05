@@ -98,7 +98,19 @@ export const NotificationBell = () => {
                     n.isRead ? 'bg-white text-dark-neutral-muted' : 'bg-forest-green-light font-semibold text-dark-neutral'
                   }`}
                 >
-                  <div>
+                  <div
+                    className="flex-1 cursor-pointer"
+                    onClick={() => {
+                      if (!n.isRead) handleMarkAsRead(n._id || n.id);
+                      if (n.link || n.data?.link) {
+                        setIsOpen(false);
+                        window.location.href = n.link || n.data?.link;
+                      } else if (n.bookingId || n.data?.bookingId) {
+                        setIsOpen(false);
+                        window.location.href = `/farmer/procurement/${n.bookingId || n.data?.bookingId}`;
+                      }
+                    }}
+                  >
                     <h5 className="font-bold text-dark-neutral text-xs mb-0.5">{n.title}</h5>
                     <p className="leading-snug text-dark-neutral-muted font-medium">{n.message}</p>
                     <span className="text-[10px] text-gray-500 font-bold block mt-1">
@@ -108,7 +120,10 @@ export const NotificationBell = () => {
 
                   {!n.isRead && (
                     <button
-                      onClick={() => handleMarkAsRead(n._id || n.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleMarkAsRead(n._id || n.id);
+                      }}
                       className="px-2 py-0.5 rounded border border-dark-neutral bg-forest-green text-white text-[10px] font-black shrink-0 mt-1 shadow-[1px_1px_0px_#22252A]"
                     >
                       {t('nav.read')}

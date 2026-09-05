@@ -37,7 +37,22 @@ const queueEntrySchema = new mongoose.Schema(
     },
     state: {
       type: String,
-      enum: ['WAITING', 'CALLED', 'ARRIVED', 'VERIFICATION', 'WEIGHING', 'COMPLETED', 'CANCELLED', 'NO_SHOW'],
+      enum: [
+        'BOOKED',
+        'WAITING',
+        'CALLED',
+        'ARRIVED',
+        'VERIFICATION',
+        'QUALITY_CHECK',
+        'WEIGHING',
+        'PROCUREMENT_CONFIRMED',
+        'PAYMENT_PROCESSING',
+        'PAYMENT_COMPLETED',
+        'COMPLETED',
+        'CANCELLED',
+        'NO_SHOW',
+        'REJECTED'
+      ],
       default: 'WAITING',
       required: true
     },

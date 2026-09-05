@@ -18,6 +18,7 @@ const adminRoutes = require('./routes/adminRoutes');
 const staffApplicationRoutes = require('./routes/staffApplicationRoutes');
 const adminApplicationRoutes = require('./routes/adminApplicationRoutes');
 const bhashiniRoutes = require('./routes/bhashiniRoutes');
+const mandiRoutes = require('./routes/mandiRoutes');
 const { notFound, errorHandler } = require('./middleware/errorMiddleware');
 
 const app = express();
@@ -90,6 +91,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/staff/applications', staffApplicationRoutes);
 app.use('/api/admin/staff-applications', adminApplicationRoutes);
 app.use('/api/bhashini', bhashiniRoutes);
+app.use('/api/mandis', mandiRoutes);
 
 // 404 Not Found Handler
 app.use(notFound);

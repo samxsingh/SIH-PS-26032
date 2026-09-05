@@ -20,6 +20,11 @@ export const CentreCard = ({
 
   return (
     <div
+      onClick={() => {
+        if (onViewDetails) {
+          onViewDetails(centre);
+        }
+      }}
       className={`bg-white rounded-xs border-2 border-dark-neutral p-5 transition-all duration-normal ease-tactile shadow-brutal hover:-translate-y-0.5 hover:shadow-brutal-lg active:translate-y-0 active:shadow-brutal cursor-pointer ${
         isSelected ? 'bg-forest-green-light/40 border-forest-green ring-2 ring-forest-green' : ''
       }`}
@@ -30,9 +35,27 @@ export const CentreCard = ({
             <span className="text-[10px] font-black uppercase tracking-wider text-forest-green bg-forest-green-light border border-dark-neutral px-2 py-0.5 rounded-xs shadow-[1px_1px_0px_#22252A]">
               ID: {centre.centreCode || 'LKO-GOM-001'}
             </span>
-            <span className="text-[10px] font-black uppercase tracking-wider text-emerald-900 bg-emerald-100 border border-emerald-700 px-2 py-0.5 rounded-xs">
-              ● OPEN NOW
-            </span>
+            {centre.isActive === false ? (
+              <span className="text-[10px] font-black uppercase tracking-wider text-gray-800 bg-gray-200 border border-gray-600 px-2 py-0.5 rounded-xs flex items-center gap-1">
+                <span>⛔</span>
+                <span>CLOSED</span>
+              </span>
+            ) : loadPct >= 80 ? (
+              <span className="text-[10px] font-black uppercase tracking-wider text-red-950 bg-red-100 border border-red-600 px-2 py-0.5 rounded-xs flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3 text-red-700" />
+                <span>HIGH LOAD</span>
+              </span>
+            ) : loadPct >= 50 ? (
+              <span className="text-[10px] font-black uppercase tracking-wider text-amber-950 bg-amber-100 border border-amber-600 px-2 py-0.5 rounded-xs flex items-center gap-1">
+                <Clock className="w-3 h-3 text-amber-700" />
+                <span>BUSY</span>
+              </span>
+            ) : (
+              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-950 bg-emerald-100 border border-emerald-700 px-2 py-0.5 rounded-xs flex items-center gap-1">
+                <span>●</span>
+                <span>OPEN NOW</span>
+              </span>
+            )}
             {isVerified ? (
               <span className="text-[10px] font-black uppercase tracking-wider text-green-900 bg-green-100 border border-green-800 px-2.5 py-0.5 rounded-xs inline-flex items-center gap-1 font-mono font-bold">
                 <ShieldCheck className="w-3 h-3 text-green-800" />
@@ -48,6 +71,14 @@ export const CentreCard = ({
           <h3 className="text-base sm:text-lg font-black font-heading tracking-tight text-dark-neutral">
             {centre.name}
           </h3>
+          {(centre.mandiName || centre.mandiId?.name) && (
+            <div className="flex items-center gap-1 text-xs font-bold text-forest-green mt-0.5">
+              <span>🏛️ Mandi:</span>
+              <span className="text-dark-neutral underline decoration-forest-green/40 underline-offset-2">
+                {centre.mandiName || centre.mandiId?.name}
+              </span>
+            </div>
+          )}
         </div>
         <Badge variant="neutral">{t('farmer.km_away', { distance: distanceKm })}</Badge>
       </div>

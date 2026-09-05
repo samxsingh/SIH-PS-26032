@@ -122,6 +122,7 @@ const getCropAnalytics = async () => {
  * Get District-Level Procurement Aggregations
  */
 const getDistrictSummaries = async () => {
+  const { CANONICAL_DISTRICTS } = require('../config/districts');
   let centres = [];
   try {
     centres = await ProcurementCentre.find().lean();
@@ -134,11 +135,35 @@ const getDistrictSummaries = async () => {
 
   const districtMap = {};
 
+  // Initialize with canonical districts so all primary and adjacent operational zones are represented
+  CANONICAL_DISTRICTS.forEach(d => {
+    districtMap[d.districtName] = {
+      districtCode: d.districtCode,
+      districtName: d.districtName,
+      stateCode: d.stateCode,
+      stateName: d.stateName,
+      isPrimaryOperational: d.isPrimaryOperational,
+      status: d.status,
+      coordinates: d.coordinates,
+      boundaryZonesCount: d.boundaryZones ? d.boundaryZones.length : 0,
+      totalCentres: 0,
+      activeCentres: 0,
+      criticalCentres: 0,
+      waitingFarmers: 0,
+      totalCapacityQuintals: 0
+    };
+  });
+
   centres.forEach((c) => {
     const dist = c.district || 'Lucknow';
     if (!districtMap[dist]) {
       districtMap[dist] = {
+        districtCode: c.districtCode || 'UP_LUK',
         districtName: dist,
+        stateCode: c.stateCode || 'UP',
+        stateName: c.state || 'Uttar Pradesh',
+        isPrimaryOperational: dist.toLowerCase() === 'lucknow',
+        status: dist.toLowerCase() === 'lucknow' ? 'ACTIVE' : 'ADJACENT_ZONE',
         totalCentres: 0,
         activeCentres: 0,
         criticalCentres: 0,
@@ -150,7 +175,7 @@ const getDistrictSummaries = async () => {
     districtMap[dist].totalCentres += 1;
     if (c.isActive) districtMap[dist].activeCentres += 1;
     districtMap[dist].waitingFarmers += c.activeQueueCount || 0;
-    districtMap[dist].totalCapacityQuintals += c.capacityQuintalsPerDay || 1000;
+    districtMap[dist].totalCapacityQuintals += c.dailyCapacityQuintals || c.capacityQuintalsPerDay || 1000;
 
     const health = calculateCentreHealth(c.estimatedWaitMinutes || 30, c.queueLoadPercentage || 45);
     if (health === 'CRITICAL') districtMap[dist].criticalCentres += 1;

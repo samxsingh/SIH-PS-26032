@@ -57,14 +57,23 @@ const bookingSchema = new mongoose.Schema(
       type: String,
       enum: [
         'BOOKED',
+        'WAITING',
+        'CALLED',
         'ARRIVED',
-        'IN QUEUE',
+        'VERIFICATION',
+        'QUALITY_CHECK',
         'QUALITY CHECK',
+        'IN QUEUE',
         'WEIGHING',
+        'PROCUREMENT_CONFIRMED',
         'PROCUREMENT COMPLETE',
+        'PAYMENT_PROCESSING',
         'PAYMENT PROCESSING',
+        'PAYMENT_COMPLETED',
         'COMPLETED',
-        'CANCELLED'
+        'CANCELLED',
+        'NO_SHOW',
+        'REJECTED'
       ],
       default: 'BOOKED'
     },

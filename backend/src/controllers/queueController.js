@@ -17,12 +17,9 @@ const getAuthorizedCentreId = (user, requestedCentreId) => {
   if (user.role === 'CENTRE_STAFF') {
     const assigned = user.assignedCentreId ? user.assignedCentreId.toString() : null;
     if (requestedCentreId && assigned && requestedCentreId.toString() !== assigned) {
-      const isPrimaryDemoAlias = (requestedCentreId.toString() === 'c1' || assigned === 'c1');
-      if (!isPrimaryDemoAlias) {
-        return null; // Explicitly reject unauthorized cross-centre operation attempt
-      }
+      return null; // Explicitly reject unauthorized cross-centre operation attempt
     }
-    return user.assignedCentreId || requestedCentreId || 'c1';
+    return user.assignedCentreId || requestedCentreId;
   }
   return null;
 };
@@ -115,10 +112,11 @@ const handleCallNext = async (req, res, next) => {
       }
     });
   } catch (error) {
-    res.status(400).json({
+    const status = error.statusCode || 400;
+    res.status(status).json({
       success: false,
       error: {
-        code: 'CALL_NEXT_FAILED',
+        code: error.code || 'CALL_NEXT_FAILED',
         message: error.message
       }
     });
@@ -156,10 +154,11 @@ const handleTransition = async (req, res, next) => {
       }
     });
   } catch (error) {
-    res.status(400).json({
+    const status = error.statusCode || 400;
+    res.status(status).json({
       success: false,
       error: {
-        code: 'TRANSITION_FAILED',
+        code: error.code || 'TRANSITION_FAILED',
         message: error.message
       }
     });

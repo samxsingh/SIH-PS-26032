@@ -85,6 +85,16 @@ const authenticate = async (req, res, next) => {
       });
     }
 
+    if (user.isActive === false || user.accountStatus === 'INACTIVE' || user.accountStatus === 'SUSPENDED') {
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: user.accountStatus === 'SUSPENDED' ? 'ACCOUNT_SUSPENDED' : 'ACCOUNT_INACTIVE',
+          message: 'This account has been deactivated or suspended. Access denied.'
+        }
+      });
+    }
+
     req.user = user;
     next();
   } catch (error) {

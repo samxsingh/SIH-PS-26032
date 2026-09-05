@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import apiClient from '../../services/apiClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSocketQueue } from '../../hooks/useSocketQueue';
 import Navbar from '../../components/common/Navbar';
 import PageHeader from '../../components/common/PageHeader';
 import Card from '../../components/common/Card';
@@ -30,18 +31,22 @@ import {
   AlertCircle,
   RefreshCw,
   SearchX,
-  Ticket
+  Ticket,
+  Bell
 } from 'lucide-react';
 
-const STAGES = [
-  { key: 'SLOT_CONFIRMED', label: '1. Slot Confirmed' },
-  { key: 'PRODUCE_RECEIVED', label: '2. Produce Received' },
-  { key: 'QUALITY_VERIFIED', label: '3. Quality Verified' },
-  { key: 'WEIGHED', label: '4. Produce Weighed' },
-  { key: 'PROCUREMENT_COMPLETED', label: '5. Procurement Completed' },
-  { key: 'PAYMENT_INITIATED', label: '6. Payment Initiated' },
-  { key: 'PAYMENT_PROCESSING', label: '7. Payment Processing' },
-  { key: 'PAID', label: '8. Paid (Disbursed)' }
+// Canonical 10-Stage Procurement Lifecycle
+const CANONICAL_STAGES = [
+  { key: 'BOOKED', num: 1, translationKey: 'canonical_stage_1', defaultLabel: '1. Booked', short: 'Booked', meaningKey: 'canonical_meaning_1', defaultMeaning: 'Your slot is confirmed.', phase: 'PRE_ARRIVAL' },
+  { key: 'WAITING', num: 2, translationKey: 'canonical_stage_2', defaultLabel: '2. Waiting', short: 'Waiting', meaningKey: 'canonical_meaning_2', defaultMeaning: 'You are in the centre queue.', phase: 'PRE_ARRIVAL' },
+  { key: 'CALLED', num: 3, translationKey: 'canonical_stage_3', defaultLabel: '3. Called', short: 'Called', meaningKey: 'canonical_meaning_3', defaultMeaning: 'Proceed to the assigned counter.', phase: 'INTAKE' },
+  { key: 'ARRIVED', num: 4, translationKey: 'canonical_stage_4', defaultLabel: '4. Arrived', short: 'Arrived', meaningKey: 'canonical_meaning_4', defaultMeaning: 'Your arrival has been recorded.', phase: 'INTAKE' },
+  { key: 'VERIFICATION', num: 5, translationKey: 'canonical_stage_5', defaultLabel: '5. Verification', short: 'Verify', meaningKey: 'canonical_meaning_5', defaultMeaning: 'Documents and farmer details are being checked.', phase: 'INTAKE' },
+  { key: 'QUALITY_CHECK', num: 6, translationKey: 'canonical_stage_6', defaultLabel: '6. Quality Check', short: 'Quality', meaningKey: 'canonical_meaning_6', defaultMeaning: 'Your crop quality is being assessed.', phase: 'INTAKE' },
+  { key: 'WEIGHING', num: 7, translationKey: 'canonical_stage_7', defaultLabel: '7. Weighing', short: 'Weigh', meaningKey: 'canonical_meaning_7', defaultMeaning: 'Your produce is being weighed.', phase: 'INTAKE' },
+  { key: 'PROCUREMENT_CONFIRMED', num: 8, translationKey: 'canonical_stage_8', defaultLabel: '8. Procurement Confirmed', short: 'Procured', meaningKey: 'canonical_meaning_8', defaultMeaning: 'Your procurement has been confirmed.', phase: 'COMPLETED' },
+  { key: 'PAYMENT_PROCESSING', num: 9, translationKey: 'canonical_stage_9', defaultLabel: '9. Payment Processing', short: 'DBT Processing', meaningKey: 'canonical_meaning_9', defaultMeaning: 'Payment is being prepared.', phase: 'PAYMENT' },
+  { key: 'PAYMENT_COMPLETED', num: 10, translationKey: 'canonical_stage_10', defaultLabel: '10. Payment Completed', short: 'DBT Settled', meaningKey: 'canonical_meaning_10', defaultMeaning: 'Payment has been marked as completed.', phase: 'PAYMENT' }
 ];
 
 export const FarmerProcurementPage = () => {
@@ -57,6 +62,7 @@ export const FarmerProcurementPage = () => {
   const [errorType, setErrorType] = useState(null); // null | 'NOT_FOUND' | 'ERROR'
   const [errorMsg, setErrorMsg] = useState(null);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [liveNotification, setLiveNotification] = useState(null);
 
   const fetchData = useCallback(async () => {
     if (!bookingId) {
@@ -82,7 +88,6 @@ export const FarmerProcurementPage = () => {
           isBookingFound = true;
         }
       } catch (err) {
-        // If 403, user is forbidden from accessing another farmer's booking
         if (err?.status === 403) {
           setErrorType('NOT_FOUND');
           setErrorMsg(t('farmer.booking_not_found_desc', 'The requested procurement booking could not be found or you do not have permission to view it.'));
@@ -129,7 +134,6 @@ export const FarmerProcurementPage = () => {
         setPaymentStatus(null);
       }
 
-      // If neither booking nor procurement is found, trigger NOT_FOUND state
       if (!isBookingFound && (!procRes.value || !procRes.value.success)) {
         setErrorType('NOT_FOUND');
         setErrorMsg(t('farmer.booking_not_found_desc', 'The requested procurement booking could not be found or you do not have permission to view it.'));
@@ -146,35 +150,67 @@ export const FarmerProcurementPage = () => {
     fetchData();
   }, [fetchData]);
 
-  // Compute operational stage index safely from either payment status, procurement, or booking
+  // Socket.IO real-time hook
+  const centreId = booking?.centreId?._id || booking?.centreId || booking?.centre?._id || booking?.centre?.id;
+  const farmerId = user?._id || user?.id;
+
+  useSocketQueue({
+    centreId,
+    farmerId,
+    onQueueUpdate: (eventData) => {
+      console.log('[Farmer Procurement Socket] Real-time event received:', eventData);
+      if (eventData?.stage || eventData?.status) {
+        setLiveNotification(`Real-time update: Your token status is now ${eventData.stage || eventData.status}`);
+        setTimeout(() => setLiveNotification(null), 6000);
+      }
+      fetchData();
+    }
+  });
+
+  // Compute canonical operational stage index (0 to 9)
   const getStageFromStatus = () => {
-    if (paymentStatus?.currentStage) {
-      const idx = STAGES.findIndex((s) => s.key === paymentStatus.currentStage);
-      if (idx !== -1) return idx;
+    // 1. Direct payment completion or payment status check
+    if (paymentStatus?.currentStage === 'PAID' || paymentStatus?.status === 'SUCCESS' || procurement?.paymentStatus === 'PAID') {
+      return 9; // PAYMENT_COMPLETED
+    }
+    if (paymentStatus?.currentStage === 'PAYMENT_PROCESSING' || procurement?.paymentStatus === 'PROCESSING') {
+      return 8; // PAYMENT_PROCESSING
+    }
+    if (procurement?.procurementStatus === 'COMPLETED' || booking?.operationalStatus === 'PROCUREMENT_CONFIRMED' || booking?.operationalStatus === 'PROCUREMENT COMPLETE') {
+      return 7; // PROCUREMENT_CONFIRMED
     }
 
-    if (procurement?.procurementStatus === 'COMPLETED') {
-      return 7; // Paid (Disbursed)
-    }
-
-    const opStatus = booking?.operationalStatus || '';
+    // 2. Canonical operational status on booking or queue
+    const opStatus = (booking?.operationalStatus || '').toUpperCase().replace(/\s+/g, '_');
     switch (opStatus) {
       case 'BOOKED':
         return 0;
-      case 'ARRIVED':
+      case 'WAITING':
+      case 'IN_QUEUE':
+      case 'QUEUED':
         return 1;
-      case 'IN QUEUE':
+      case 'CALLED':
         return 2;
-      case 'QUALITY CHECK':
+      case 'ARRIVED':
         return 3;
-      case 'WEIGHING':
+      case 'VERIFICATION':
         return 4;
-      case 'PROCUREMENT COMPLETE':
+      case 'QUALITY_CHECK':
+      case 'QUALITY':
         return 5;
-      case 'PAYMENT PROCESSING':
+      case 'WEIGHING':
+      case 'WEIGHED':
         return 6;
-      case 'COMPLETED':
+      case 'PROCUREMENT_CONFIRMED':
+      case 'PROCUREMENT_COMPLETE':
         return 7;
+      case 'PAYMENT_PROCESSING':
+      case 'PAYMENT_INITIATED':
+        return 8;
+      case 'PAYMENT_COMPLETED':
+      case 'COMPLETED':
+      case 'PAID':
+        return 9;
       default:
         return 0;
     }
@@ -182,21 +218,11 @@ export const FarmerProcurementPage = () => {
 
   const currentStageIndex = getStageFromStatus();
 
-  const getStageLabel = (key, defaultLabel) => {
-    switch (key) {
-      case 'SLOT_CONFIRMED': return t('farmer.stage_1');
-      case 'PRODUCE_RECEIVED': return t('farmer.stage_2');
-      case 'QUALITY_VERIFIED': return t('farmer.stage_3');
-      case 'WEIGHED': return t('farmer.stage_4');
-      case 'PROCUREMENT_COMPLETED': return t('farmer.stage_5');
-      case 'PAYMENT_INITIATED': return t('farmer.stage_6');
-      case 'PAYMENT_PROCESSING': return t('farmer.stage_7');
-      case 'PAID': return t('farmer.stage_8');
-      default: return defaultLabel;
-    }
+  const getStageLabel = (stage) => {
+    return t(`farmer.${stage.translationKey}`, stage.defaultLabel);
   };
 
-  // Safe normalized centre details (defaults to standard Lucknow hub if not loaded)
+  // Safe normalized centre details
   const centreInfo = procurement?.centreId || booking?.centre || {};
   const centreName = centreInfo.name || 'Krishi Seva Procurement Centre — Gomti Nagar';
   const centreAddress = centreInfo.address || 'Vibhuti Khand, Gomti Nagar, Lucknow';
@@ -225,7 +251,7 @@ export const FarmerProcurementPage = () => {
   const netPayable = Number(procurement?.netPayableAmount || (grossAmount - deductions));
 
   return (
-    <div className="min-h-screen bg-warm-ivory flex flex-col selection:bg-forest-green selection:text-white">
+    <div className="min-h-screen bg-warm-ivory flex flex-col selection:bg-forest-green selection:text-white font-sans">
       <Navbar />
 
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 animate-page-enter">
@@ -245,12 +271,19 @@ export const FarmerProcurementPage = () => {
           title={t('farmer.procurement_journey_title', 'Procurement Journey & Payment Status')}
           subtitle={t('farmer.procurement_journey_subtitle', 'Track your crop verification, net weight settlement, and payment status progression')}
           badge={
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-forest-green-light text-forest-green border border-forest-green rounded-xs text-[11px] font-black uppercase shadow-[1px_1px_0px_#22252A]">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-forest-green-light text-forest-green border border-forest-green rounded-xs text-[11px] font-black uppercase shadow-[1px_1px_0px_#22252A]">
               <span className="w-2 h-2 rounded-full bg-forest-green animate-pulse" />
-              <span>{t('farmer.live_procurement_journey', 'Live Procurement Journey')}</span>
+              <span>Lucknow District Operations</span>
             </span>
           }
         />
+
+        {liveNotification && (
+          <div className="mb-4 p-3 bg-emerald-100 border-2 border-forest-green text-emerald-900 rounded-xs text-xs font-bold flex items-center gap-2 shadow-brutal-sm animate-fade-in">
+            <Bell className="w-4 h-4 text-forest-green shrink-0 animate-bounce" />
+            <span>{liveNotification}</span>
+          </div>
+        )}
 
         {isLoading ? (
           <LoadingState message={t('farmer.fetching_procurement_details', 'Fetching procurement transaction details...')} />
@@ -319,57 +352,159 @@ export const FarmerProcurementPage = () => {
               </div>
             </div>
 
-            {/* Demo Payment Notice Alert */}
-            <Alert type="info" title={t('farmer.demo_payment_tracker', 'Demo Payment Tracker')}>
-              {paymentStatus?.demoNotice || t('farmer.demo_payment_notice', 'Demo Payment Status — Visual Tracker Only for Hackathon MVP')}
-              <br />
-              <span className="text-[11px] font-bold opacity-90">
-                {t('farmer.demo_reference_prefix', 'Demo Reference #:')}{' '}
-                <strong>{paymentStatus?.demoReferenceNumber || 'PAY-DEMO-20260901-4921'}</strong>
-              </span>
-            </Alert>
-
-            {/* 8-Stage Visual Timeline Tracker Card */}
-            <Card title={t('farmer.timeline_title', 'Procurement & DBT Progression Timeline')} accentBorder shadow="normal">
+            {/* Canonical 10-Stage Visual Timeline Tracker Card */}
+            <Card title={t('farmer.timeline_title', '10-Stage Procurement & Settlement Progression')} accentBorder shadow="normal">
               <div className="py-2 space-y-4">
+                {/* Compact Progress Summary Ribbon */}
+                <div className="flex items-center justify-between flex-wrap gap-2 px-3 py-2 bg-warm-ivory border border-dark-neutral/30 rounded-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black uppercase text-forest-green tracking-wider">
+                      {currentStageIndex + 1} of 10 stages completed
+                    </span>
+                    <span className="text-xs text-dark-neutral-muted">•</span>
+                    <span className="text-xs font-bold text-dark-neutral">
+                      {CANONICAL_STAGES[currentStageIndex]?.defaultLabel}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono font-black text-forest-green">
+                      {Math.round(((currentStageIndex + 1) / 10) * 100)}%
+                    </span>
+                    <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden border border-dark-neutral/20">
+                      <div
+                        className="h-full bg-forest-green transition-all duration-500"
+                        style={{ width: `${Math.round(((currentStageIndex + 1) / 10) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 {/* Visual Ladder */}
                 <ProgressLadder
-                  stages={STAGES.map((s, idx) => ({
+                  stages={CANONICAL_STAGES.map((s) => ({
                     key: s.key,
-                    short: getStageLabel(s.key, s.label),
-                    label: getStageLabel(s.key, s.label),
-                    desc: idx < 5 ? 'Mandate Stage: Verification & Net Physical Intake' : 'Financial Stage: Direct Benefit Transfer (DBT)'
+                    short: s.short,
+                    label: getStageLabel(s),
+                    meaning: t(s.meaningKey, s.defaultMeaning),
+                    timestamp: s.num <= currentStageIndex + 1 ? 'Logged' : null
                   }))}
                   currentIndex={currentStageIndex}
                 />
 
-                {/* Clear Stage Grouping Summary */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t-2 border-dark-neutral/10">
-                  <div className={`p-3 rounded-xs border-2 ${currentStageIndex < 5 ? 'bg-emerald-50 border-emerald-700' : 'bg-warm-ivory border-dark-neutral/30'}`}>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-dark-neutral">
-                        Phase 1: Physical Procurement
-                      </span>
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-xs border ${currentStageIndex >= 5 ? 'bg-emerald-100 text-emerald-800 border-emerald-400' : 'bg-forest-green text-white border-dark-neutral'}`}>
-                        {currentStageIndex >= 5 ? 'Completed' : 'Active'}
-                      </span>
+                {/* What Happens Now? & What to Expect Next? Operational Panels */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-3 border-t-2 border-dark-neutral/10">
+                  <div className="p-3.5 bg-emerald-50 border-2 border-forest-green rounded-xs shadow-brutal-sm">
+                    <div className="flex items-center gap-2 text-xs font-black uppercase text-forest-green mb-1.5">
+                      <Clock className="w-4 h-4 text-forest-green shrink-0" />
+                      <span>{t('farmer.what_happens_now', 'What Happens Now? (Current Step)')}</span>
                     </div>
-                    <p className="text-[11px] text-dark-neutral-muted">
-                      Slot reservation, moisture assaying, grain quality grade certification, and weighbridge intake slip.
+                    <p className="text-xs text-dark-neutral font-medium leading-relaxed">
+                      {(() => {
+                        switch (currentStageIndex) {
+                          case 0:
+                            return 'Your delivery slot is confirmed in the Lucknow district operational pilot. Keep your Registration ID and land revenue documents ready before visiting the facility.';
+                          case 1:
+                            return 'You are currently in the live intake yard queue. Token announcements are delivered through audio speakers and mobile screen updates. Please remain within the waiting pavilion.';
+                          case 2:
+                            return '📢 YOUR TOKEN HAS BEEN CALLED! Please proceed directly to Counter 1 / Intake Bay with your vehicle and official farmer photo identity proof.';
+                          case 3:
+                            return 'Your vehicle arrival has been officially recorded by the gate operator. Proceed forward into the verification inspection lane.';
+                          case 4:
+                            return 'Procurement officials are matching your Aadhaar credentials, land record verification, and crop declaration against Mandi quotas.';
+                          case 5:
+                            return 'Quality assayers are drawing representative grain samples to measure moisture content (threshold ≤ 14.0%) and grain cleanliness.';
+                          case 6:
+                            return 'Your produce is on the certified weighbridge. Gross weight of the loaded vehicle and subsequent tare weight of the empty vehicle are certified digitally.';
+                          case 7:
+                            return 'Procurement transaction is formally confirmed by the Centre Manager! Your official digital procurement receipt with serial number is generated.';
+                          case 8:
+                            return 'Payment settlement voucher has been submitted to the DBT payment gateway. Fund transfer routing to your Aadhaar-linked bank account is underway.';
+                          case 9:
+                            return '✓ MSP funds successfully disbursed via Direct Benefit Transfer! The full net amount has been credited to your verified bank account.';
+                          default:
+                            return 'Your procurement journey is actively monitored by the Lucknow District Procurement Command.';
+                        }
+                      })()}
                     </p>
                   </div>
 
-                  <div className={`p-3 rounded-xs border-2 ${currentStageIndex >= 5 ? 'bg-amber-50 border-amber-700' : 'bg-warm-ivory border-dark-neutral/30'}`}>
+                  <div className="p-3.5 bg-warm-ivory border-2 border-dark-neutral/40 rounded-xs shadow-brutal-sm">
+                    <div className="flex items-center gap-2 text-xs font-black uppercase text-dark-neutral mb-1.5">
+                      <ArrowRight className="w-4 h-4 text-forest-green shrink-0" />
+                      <span>{t('farmer.what_to_expect_next', 'What Should I Expect Next?')}</span>
+                    </div>
+                    <p className="text-xs text-dark-neutral-muted font-medium leading-relaxed">
+                      {(() => {
+                        switch (currentStageIndex) {
+                          case 0:
+                            return 'Once you arrive at the centre, gate operators will register your intake ticket and position you in the digital queue.';
+                          case 1:
+                            return 'When counter operators press CALL NEXT, your token number will alert with assigned bay instructions.';
+                          case 2:
+                            return 'Operator will verify farmer identity and generate physical check-in approval.';
+                          case 3:
+                            return 'Document verification will cross-check land ownership and biometric match.';
+                          case 4:
+                            return 'Grain assaying will evaluate moisture percentage and assign standard Grade A quality.';
+                          case 5:
+                            return 'Electronic weighbridge gross minus tare certified weight will compute your final quintals.';
+                          case 6:
+                            return 'Statutory Centre Manager will sign off and issue the official digital receipt.';
+                          case 7:
+                            return 'PFMS/DBT financial batch will queue for direct electronic credit to your bank.';
+                          case 8:
+                            return 'Bank SMS confirmation and final DBT settlement receipt will be available in your portal.';
+                          case 9:
+                            return 'Your seasonal procurement quota is updated in the district civil supplies registry.';
+                          default:
+                            return 'Next operational stage will update automatically in real-time.';
+                        }
+                      })()}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Clear Stage Grouping Summary */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t-2 border-dark-neutral/10 text-xs">
+                  <div className={`p-3 rounded-xs border-2 ${currentStageIndex < 2 ? 'bg-emerald-50 border-emerald-700' : 'bg-warm-ivory border-dark-neutral/30'}`}>
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-[10px] font-black uppercase tracking-wider text-dark-neutral">
-                        Phase 2: DBT Payment Settlement
+                        Phase 1: Booking & Wait
                       </span>
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-xs border ${currentStageIndex === 7 ? 'bg-emerald-100 text-emerald-800 border-emerald-400' : currentStageIndex >= 5 ? 'bg-amber-500 text-white border-dark-neutral' : 'bg-gray-100 text-gray-600 border-gray-300'}`}>
-                        {currentStageIndex === 7 ? 'Paid (Disbursed)' : currentStageIndex >= 5 ? 'Processing' : 'Awaiting Procurement'}
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-xs border ${currentStageIndex >= 2 ? 'bg-emerald-100 text-emerald-800 border-emerald-400' : 'bg-forest-green text-white border-dark-neutral'}`}>
+                        {currentStageIndex >= 2 ? 'Passed' : 'Active'}
                       </span>
                     </div>
                     <p className="text-[11px] text-dark-neutral-muted">
-                      Public Financial Management System (PFMS) verification and direct bank transfer disbursement.
+                      Slot confirmed. Farmer is queued and awaits turn notification.
+                    </p>
+                  </div>
+
+                  <div className={`p-3 rounded-xs border-2 ${currentStageIndex >= 2 && currentStageIndex <= 6 ? 'bg-emerald-50 border-emerald-700' : 'bg-warm-ivory border-dark-neutral/30'}`}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-dark-neutral">
+                        Phase 2: Gate to Weighment
+                      </span>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-xs border ${currentStageIndex > 6 ? 'bg-emerald-100 text-emerald-800 border-emerald-400' : currentStageIndex >= 2 ? 'bg-forest-green text-white border-dark-neutral' : 'bg-gray-100 text-gray-500 border-gray-300'}`}>
+                        {currentStageIndex > 6 ? 'Passed' : currentStageIndex >= 2 ? 'In Progress' : 'Pending'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-dark-neutral-muted">
+                      Check-in, documentary verification, grain moisture inspection, and gross/tare weighbridge records.
+                    </p>
+                  </div>
+
+                  <div className={`p-3 rounded-xs border-2 ${currentStageIndex >= 7 ? 'bg-amber-50 border-amber-700' : 'bg-warm-ivory border-dark-neutral/30'}`}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-dark-neutral">
+                        Phase 3: DBT Settlement
+                      </span>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-xs border ${currentStageIndex === 9 ? 'bg-emerald-100 text-emerald-800 border-emerald-400' : currentStageIndex >= 7 ? 'bg-amber-500 text-white border-dark-neutral' : 'bg-gray-100 text-gray-500 border-gray-300'}`}>
+                        {currentStageIndex === 9 ? 'Paid (Disbursed)' : currentStageIndex >= 7 ? 'Processing' : 'Awaiting Procurement'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-dark-neutral-muted">
+                      Procurement receipt confirmation and Direct Benefit Transfer directly to farmer Aadhaar-linked account.
                     </p>
                   </div>
                 </div>
@@ -480,31 +615,9 @@ export const FarmerProcurementPage = () => {
         <DigitalReceiptModal
           isOpen={showReceiptModal}
           onClose={() => setShowReceiptModal(false)}
-          receipt={{
-            receiptSerialNumber:
-              procurement?.receiptSerialNumber ||
-              `REC-${booking?.bookingReference || bookingId || 'LKO01'}-819`,
-            tokenNumber: booking?.tokenNumber || procurement?.tokenNumber || 'TOK-01',
-            farmerName:
-              procurement?.farmerId?.fullName ||
-              booking?.farmerName ||
-              user?.fullName ||
-              'Farmer Ramesh',
-            farmerPhone:
-              procurement?.farmerId?.phone || booking?.farmerPhone || user?.phone || '9876543210',
-            centreName: centreName,
-            centreAddress: centreAddress,
-            cropType: cropType,
-            verifiedQuantityQuintals: quantity,
-            netWeightQuintals: quantity,
-            moisturePercentage: procurement?.moisturePercentage || 12.0,
-            qualityGrade: procurement?.qualityGrade || 'Grade A',
-            procurementRatePerQuintal: mspRate,
-            grossAmount: grossAmount,
-            deductions: deductions,
-            netPayableAmount: netPayable,
-            completedAt: procurement?.completedAt || booking?.updatedAt || new Date()
-          }}
+          booking={booking}
+          procurement={procurement}
+          paymentStatus={paymentStatus}
         />
       </main>
     </div>

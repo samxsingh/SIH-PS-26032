@@ -242,7 +242,9 @@ const getCentres = async (req, res, next) => {
       if (district) query.district = new RegExp(district, 'i');
       if (search) query.name = new RegExp(search, 'i');
 
-      centres = await ProcurementCentre.find(query).lean();
+      centres = await ProcurementCentre.find(query)
+        .populate('mandiId', 'name mandiCode category address location')
+        .lean();
     } catch (dbErr) {
       centres = [...inMemoryCentres];
     }
@@ -320,7 +322,9 @@ const getCentreById = async (req, res, next) => {
 
     let centre = null;
     try {
-      centre = await ProcurementCentre.findById(id).lean();
+      centre = await ProcurementCentre.findById(id)
+        .populate('mandiId', 'name mandiCode category address location')
+        .lean();
     } catch (dbErr) {
       centre = inMemoryCentres.find((c) => c._id === id || c.id === id);
     }
@@ -386,7 +390,10 @@ const getMyCentreProfile = async (req, res, next) => {
     const centreIdStr = centreId.toString();
     let centre = null;
     try {
-      centre = await ProcurementCentre.findById(centreId).populate('currentHeadId', 'fullName email phone designation').lean();
+      centre = await ProcurementCentre.findById(centreId)
+        .populate('currentHeadId', 'fullName email phone designation')
+        .populate('mandiId', 'name category district code address location')
+        .lean();
     } catch (dbErr) {
       centre = inMemoryCentres.find(c => c._id === centreIdStr || c.id === centreIdStr || c.centreCode === centreIdStr);
     }
@@ -483,6 +490,20 @@ const getMyCentreProfile = async (req, res, next) => {
       data: {
         centreId: centre.centreCode || centre._id || centre.id,
         name: centre.name,
+        centreType: centre.centreType || 'PROCUREMENT_CENTRE',
+        mandiId: centre.mandiId?._id || centre.mandiId?.id || centre.mandiId,
+        mandiName: centre.mandiId?.name || (centre.district === 'Lucknow' ? 'Dubagga Regulated Mandi' : 'APMC Mandi'),
+        mandi: centre.mandiId ? {
+          id: centre.mandiId._id || centre.mandiId.id,
+          name: centre.mandiId.name,
+          category: centre.mandiId.category,
+          district: centre.mandiId.district
+        } : {
+          name: 'Dubagga Regulated Mandi',
+          category: 'PRINCIPAL_MARKET_YARD',
+          district: 'Lucknow'
+        },
+        crops: centre.crops || ['Wheat', 'Paddy', 'Mustard', 'Maize'],
         address: centre.address,
         villageName: centre.villageName || '',
         locality: centre.locality || centre.localityCode || '',
@@ -717,6 +738,11 @@ const addCentreStaffMember = async (req, res, next) => {
         district: req.user.district || 'Lucknow',
         state: req.user.state || 'Uttar Pradesh'
       });
+      if (newStaff && centreId) {
+        await ProcurementCentre.findByIdAndUpdate(centreId, {
+          $addToSet: { staffIds: newStaff._id }
+        });
+      }
     } catch (dbErr) {
       const id = 'user_staff_' + Date.now();
       newStaff = {
@@ -861,7 +887,23 @@ const updateStaffMemberDetails = async (req, res, next) => {
       if (staff) {
         if (fullName) staff.fullName = fullName.trim();
         if (phone) staff.phone = phone.trim();
-        if (designation) staff.designation = designation;
+        
+        // Single Centre Manager Invariant
+        if (designation === 'Centre Head') {
+          // Demote any existing head at this centre
+          await User.updateMany(
+            { assignedCentreId: centreId, isCentreHead: true, _id: { $ne: staff._id } },
+            { $set: { isCentreHead: false, designation: 'Procurement Operator' } }
+          );
+          staff.isCentreHead = true;
+          staff.designation = 'Centre Head';
+          await ProcurementCentre.findByIdAndUpdate(centreId, { currentHeadId: staff._id });
+        } else if (designation) {
+          staff.designation = designation;
+          if (staff.isCentreHead && designation !== 'Centre Head') {
+            staff.isCentreHead = false;
+          }
+        }
         await staff.save();
       }
     } catch (dbErr) {
@@ -869,7 +911,21 @@ const updateStaffMemberDetails = async (req, res, next) => {
       if (staff) {
         if (fullName) staff.fullName = fullName.trim();
         if (phone) staff.phone = phone.trim();
-        if (designation) staff.designation = designation;
+        if (designation === 'Centre Head') {
+          for (const [, u] of inMemoryUsers) {
+            if (u.assignedCentreId === centreId && u.isCentreHead && (u._id !== staffId && u.id !== staffId)) {
+              u.isCentreHead = false;
+              u.designation = 'Procurement Operator';
+            }
+          }
+          staff.isCentreHead = true;
+          staff.designation = 'Centre Head';
+        } else if (designation) {
+          staff.designation = designation;
+          if (staff.isCentreHead && designation !== 'Centre Head') {
+            staff.isCentreHead = false;
+          }
+        }
       }
     }
 
@@ -973,14 +1029,23 @@ const updateBookingOperationalStatus = async (req, res, next) => {
 
     const validStatuses = [
       'BOOKED',
+      'WAITING',
+      'CALLED',
       'ARRIVED',
-      'IN QUEUE',
+      'VERIFICATION',
+      'QUALITY_CHECK',
       'QUALITY CHECK',
+      'IN QUEUE',
       'WEIGHING',
+      'PROCUREMENT_CONFIRMED',
       'PROCUREMENT COMPLETE',
+      'PAYMENT_PROCESSING',
       'PAYMENT PROCESSING',
+      'PAYMENT_COMPLETED',
       'COMPLETED',
-      'CANCELLED'
+      'CANCELLED',
+      'NO_SHOW',
+      'REJECTED'
     ];
 
     if (!validStatuses.includes(operationalStatus)) {

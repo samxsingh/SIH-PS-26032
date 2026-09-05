@@ -52,6 +52,16 @@ export const useSocketQueue = ({ centreId, farmerId, onQueueUpdate }) => {
       if (onQueueUpdateRef.current) onQueueUpdateRef.current(data);
     });
 
+    socket.on('procurement:completed', (data) => {
+      console.log('[Socket Event] procurement:completed received:', data);
+      if (onQueueUpdateRef.current) onQueueUpdateRef.current(data);
+    });
+
+    socket.on('payment:updated', (data) => {
+      console.log('[Socket Event] payment:updated received:', data);
+      if (onQueueUpdateRef.current) onQueueUpdateRef.current(data);
+    });
+
     socket.on('connect_error', (err) => {
       console.warn('[Socket Hook] Connection error:', err.message);
       setConnectionStatus('reconnecting');

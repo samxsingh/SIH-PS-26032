@@ -56,7 +56,7 @@ const initializePaymentStatus = async ({ bookingId, farmerId, initialStage = 'SL
 /**
  * Update Payment Stage (Controlled Forward Transitions Only)
  */
-const updatePaymentStage = async ({ bookingId, procurementId, farmerId, newStage, totalAmount, role = 'STAFF', remarks = '' }) => {
+const updatePaymentStage = async ({ bookingId, procurementId, farmerId, newStage, totalAmount, role = 'STAFF', remarks = '', io }) => {
   let paymentDoc = null;
   try {
     paymentDoc = await PaymentStatus.findOne({ bookingId });
@@ -72,9 +72,19 @@ const updatePaymentStage = async ({ bookingId, procurementId, farmerId, newStage
   const currentIdx = getStageIndex(paymentDoc.currentStage);
   const newIdx = getStageIndex(newStage);
 
+  // Terminal state: PAID is immutable
+  if (paymentDoc.currentStage === 'PAID') {
+    throw new Error('Cannot update payment stage: Payment has already reached terminal status PAID.');
+  }
+
   // Reject backward transitions unless moving to PAYMENT_FAILED
   if (newStage !== 'PAYMENT_FAILED' && newIdx !== -1 && currentIdx !== -1 && newIdx < currentIdx) {
     throw new Error(`Invalid payment status transition from ${paymentDoc.currentStage} to ${newStage}.`);
+  }
+
+  // Reject invalid stage jumps: cannot jump directly to PAID without completing procurement
+  if (newStage === 'PAID' && currentIdx < getStageIndex('PROCUREMENT_COMPLETED')) {
+    throw new Error(`Invalid lifecycle skip: Cannot transition directly from ${paymentDoc.currentStage} to PAID without completing procurement.`);
   }
 
   if (paymentDoc.save) {
@@ -101,6 +111,16 @@ const updatePaymentStage = async ({ bookingId, procurementId, farmerId, newStage
       remarks: remarks || `Status advanced to ${newStage}`
     });
     inMemoryPayments.set(bookingId.toString(), paymentDoc);
+  }
+
+  if (io) {
+    io.to('admin_global').emit('payment:updated', {
+      bookingId,
+      procurementId,
+      newStage,
+      totalAmount,
+      updatedAt: new Date()
+    });
   }
 
   return paymentDoc;

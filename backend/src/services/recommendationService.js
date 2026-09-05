@@ -24,13 +24,13 @@ const recommendCentre = (userLocation, centres, targetDate) => {
     return { recommended: null, alternatives: [] };
   }
 
-  const userLat = userLocation?.latitude || 23.2000;
-  const userLon = userLocation?.longitude || 77.0800;
+  const userLat = userLocation?.latitude || 26.8467;
+  const userLon = userLocation?.longitude || 80.9462;
 
   // 1. Calculate raw metrics per centre
   const enrichedCentres = centres.map((centre) => {
-    const centreLat = centre.location?.coordinates[1] || 23.2000;
-    const centreLon = centre.location?.coordinates[0] || 77.0800;
+    const centreLat = centre.location?.coordinates?.[1] || 26.8467;
+    const centreLon = centre.location?.coordinates?.[0] || 80.9462;
     const distanceKm = calculateDistanceKm(userLat, userLon, centreLat, centreLon);
     const estimatedWaitMinutes = calculateEstimatedWaitTime(centre);
     const queueLoadPct = centre.currentLoadPercentage || 50;

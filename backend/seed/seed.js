@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const User = require('../src/models/User');
 const ProcurementCentre = require('../src/models/ProcurementCentre');
+const Mandi = require('../src/models/Mandi');
 const Slot = require('../src/models/Slot');
 const Booking = require('../src/models/Booking');
 const QueueEntry = require('../src/models/QueueEntry');
@@ -24,6 +25,7 @@ const seedData = async () => {
     // Clear existing collections
     await User.deleteMany({});
     await ProcurementCentre.deleteMany({});
+    await Mandi.deleteMany({});
     await Slot.deleteMany({});
     await Booking.deleteMany({});
     await QueueEntry.deleteMany({});
@@ -34,10 +36,68 @@ const seedData = async () => {
 
     console.log('[Seed Script] Cleared existing database records.');
 
-    // 1. Create Realistic Procurement Centres across Lucknow, Uttar Pradesh with transparent data provenance
+    
+    // 1. Create Canonical Regulated Mandis in Lucknow
+    const mandis = await Mandi.create([
+      {
+        mandiCode: 'MND_LKO_DUB',
+        name: 'Dubagga Naveen Phal Va Krishi Mandi Samiti',
+        category: 'PRINCIPAL_MARKET_YARD',
+        address: 'Hardoi Road, Dubagga, Lucknow',
+        district: 'Lucknow',
+        districtCode: 'UP_LUK',
+        state: 'Uttar Pradesh',
+        stateCode: 'UP',
+        pincode: '226003',
+        location: { type: 'Point', coordinates: [80.8650, 26.8720] },
+        operatingAuthority: 'UP State Agricultural Marketing Board (Mandi Parishad)',
+        supportedCommodities: ['Wheat', 'Paddy', 'Mustard', 'Gram', 'Maize'],
+        operatingHours: { open: '06:00', close: '20:00' },
+        isActive: true
+      },
+      {
+        mandiCode: 'MND_LKO_STP',
+        name: 'Naveen Galla Mandi Samiti — Sitapur Road',
+        category: 'PRINCIPAL_MARKET_YARD',
+        address: 'Sitapur Road, Mohibullapur, Lucknow',
+        district: 'Lucknow',
+        districtCode: 'UP_LUK',
+        state: 'Uttar Pradesh',
+        stateCode: 'UP',
+        pincode: '226021',
+        location: { type: 'Point', coordinates: [80.9320, 26.9050] },
+        operatingAuthority: 'UP State Agricultural Marketing Board (Mandi Parishad)',
+        supportedCommodities: ['Wheat', 'Paddy', 'Mustard', 'Barley'],
+        operatingHours: { open: '06:00', close: '20:00' },
+        isActive: true
+      },
+      {
+        mandiCode: 'MND_LKO_MOH',
+        name: 'Mohanlalganj Sub-Market Yard',
+        category: 'SUB_MARKET_YARD',
+        address: 'Raebareli Highway, Mohanlalganj, Lucknow',
+        district: 'Lucknow',
+        districtCode: 'UP_LUK',
+        state: 'Uttar Pradesh',
+        stateCode: 'UP',
+        pincode: '226301',
+        location: { type: 'Point', coordinates: [80.9850, 26.6800] },
+        operatingAuthority: 'UP State Agricultural Marketing Board (Mandi Parishad)',
+        supportedCommodities: ['Paddy', 'Wheat', 'Mustard'],
+        operatingHours: { open: '07:00', close: '19:00' },
+        isActive: true
+      }
+    ]);
+    console.log(`[Seed Script] Created ${mandis.length} canonical regulated mandis across Lucknow.`);
+    const mandiMap = new Map();
+    mandis.forEach(m => mandiMap.set(m.mandiCode, m._id));
+
+    // 2. Create Realistic Procurement Centres across Lucknow, Uttar Pradesh with transparent data provenance
     const centres = await ProcurementCentre.create([
       {
         centreCode: 'LKO_GOM01',
+        centreType: 'PROCUREMENT_CENTRE',
+        mandiId: mandiMap.get('MND_LKO_STP'),
         name: 'Krishi Seva Procurement Centre — Gomti Nagar',
         address: 'Vibhuti Khand, Gomti Nagar, Lucknow',
         villageName: 'Gomti Nagar',
@@ -63,6 +123,8 @@ const seedData = async () => {
       },
       {
         centreCode: 'LKO_ALI02',
+        centreType: 'PROCUREMENT_CENTRE',
+        mandiId: mandiMap.get('MND_LKO_STP'),
         name: 'Kisan Suvidha Procurement Centre — Aliganj',
         address: 'Sector B, Aliganj, Lucknow',
         villageName: 'Aliganj',
@@ -88,6 +150,8 @@ const seedData = async () => {
       },
       {
         centreCode: 'LKO_IND03',
+        centreType: 'PROCUREMENT_CENTRE',
+        mandiId: mandiMap.get('MND_LKO_STP'),
         name: 'Lucknow Grain Procurement Centre — Indira Nagar',
         address: 'Ring Road, Sector 14, Indira Nagar, Lucknow',
         villageName: 'Indira Nagar',
@@ -113,6 +177,8 @@ const seedData = async () => {
       },
       {
         centreCode: 'LKO_JAN04',
+        centreType: 'PROCUREMENT_CENTRE',
+        mandiId: mandiMap.get('MND_LKO_STP'),
         name: 'Kisan Seva Centre — Jankipuram',
         address: 'Engineering College Road, Jankipuram, Lucknow',
         villageName: 'Jankipuram',
@@ -138,6 +204,8 @@ const seedData = async () => {
       },
       {
         centreCode: 'LKO_ALA05',
+        centreType: 'COLLECTION_POINT',
+        mandiId: mandiMap.get('MND_LKO_DUB'),
         name: 'APMC Sub-Mandi Procurement Centre — Alambagh',
         address: 'Kanpur Road, Alambagh, Lucknow',
         villageName: 'Alambagh',
@@ -163,6 +231,8 @@ const seedData = async () => {
       },
       {
         centreCode: 'LKO_CHI06',
+        centreType: 'COLLECTION_POINT',
+        mandiId: mandiMap.get('MND_LKO_STP'),
         name: 'Awadh Krishi Kendra — Chinhat',
         address: 'Faizabad Road, Chinhat, Lucknow',
         villageName: 'Chinhat',
@@ -188,6 +258,8 @@ const seedData = async () => {
       },
       {
         centreCode: 'LKO_MOH07',
+        centreType: 'COLLECTION_POINT',
+        mandiId: mandiMap.get('MND_LKO_DUB'),
         name: 'Mohan Road Agro Procurement Centre',
         address: 'Mohan Road, Near Outer Ring Road, Lucknow',
         villageName: 'Mohan Road',
@@ -213,6 +285,8 @@ const seedData = async () => {
       },
       {
         centreCode: 'LKO_BKT08',
+        centreType: 'MANDI',
+        mandiId: mandiMap.get('MND_LKO_STP'),
         name: 'Bakshi Ka Talab Kisan Mandi',
         address: 'Sitapur Highway, Bakshi Ka Talab, Lucknow',
         villageName: 'Bakshi Ka Talab',
@@ -279,10 +353,15 @@ const seedData = async () => {
       });
 
       // If user is a centre head, link them to the procurement centre
-      if (u.isCentreHead && assignedCentreObjectId) {
-        await ProcurementCentre.findByIdAndUpdate(assignedCentreObjectId, {
-          currentHeadId: createdUser._id
-        });
+      // Update procurement centre head and staff rosters
+      if (assignedCentreObjectId && u.role === 'CENTRE_STAFF') {
+        const updateDoc = {
+          $addToSet: { staffIds: createdUser._id }
+        };
+        if (u.isCentreHead) {
+          updateDoc.currentHeadId = createdUser._id;
+        }
+        await ProcurementCentre.findByIdAndUpdate(assignedCentreObjectId, updateDoc);
       }
     }
 

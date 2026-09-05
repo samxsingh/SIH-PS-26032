@@ -3,12 +3,16 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import apiClient from '../../services/apiClient';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSocketQueue } from '../../hooks/useSocketQueue';
 import Navbar from '../../components/common/Navbar';
 import PageHeader from '../../components/common/PageHeader';
 import Card from '../../components/common/Card';
 import Badge from '../../components/common/Badge';
 import Button from '../../components/common/Button';
 import FarmerProfileModal from '../../components/farmer/FarmerProfileModal';
+import GoogleCentreMap from '../../components/farmer/GoogleCentreMap';
+import CentreDetailsPanel from '../../components/farmer/CentreDetailsPanel';
+import ProgressLadder from '../../components/common/ProgressLadder';
 import {
   Calendar,
   MapPin,
@@ -22,8 +26,26 @@ import {
   CreditCard,
   Building2,
   Clock,
-  ExternalLink
+  ExternalLink,
+  ChevronRight,
+  SlidersHorizontal,
+  Compass
 } from 'lucide-react';
+
+const LUCKNOW_COORDS = { lat: 26.8467, lon: 80.9462 };
+
+const CANONICAL_STAGES = [
+  { key: 'BOOKED', num: 1, short: 'BOOKED', label: 'Slot Confirmed' },
+  { key: 'WAITING', num: 2, short: 'WAITING', label: 'Waiting in Queue' },
+  { key: 'CALLED', num: 3, short: 'CALLED', label: 'Called to Counter' },
+  { key: 'ARRIVED', num: 4, short: 'ARRIVED', label: 'Arrived at Facility' },
+  { key: 'VERIFICATION', num: 5, short: 'VERIFY', label: 'Document Verification' },
+  { key: 'QUALITY_CHECK', num: 6, short: 'QUALITY', label: 'Quality Assaying' },
+  { key: 'WEIGHING', num: 7, short: 'WEIGH', label: 'Weighbridge Weighing' },
+  { key: 'PROCUREMENT_CONFIRMED', num: 8, short: 'CONFIRMED', label: 'Procurement Confirmed' },
+  { key: 'PAYMENT_PROCESSING', num: 9, short: 'PAYMENT', label: 'Payment Processing' },
+  { key: 'PAYMENT_COMPLETED', num: 10, short: 'SETTLED', label: 'Payment Completed' }
+];
 
 export const FarmerDashboardPage = () => {
   const { t } = useTranslation();
@@ -34,22 +56,63 @@ export const FarmerDashboardPage = () => {
   const [isLoadingBooking, setIsLoadingBooking] = useState(true);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
+  // Map & Centres Discovery State on Dashboard
+  const [centres, setCentres] = useState([]);
+  const [mandis, setMandis] = useState([]);
+  const [selectedCentre, setSelectedCentre] = useState(null);
+  const [detailPanelCentre, setDetailPanelCentre] = useState(null);
+  const [isLoadingCentres, setIsLoadingCentres] = useState(true);
+
+  const fetchActiveBooking = async () => {
+    try {
+      const res = await apiClient.get('/bookings/my');
+      if (res.success && res.data && res.data.length > 0) {
+        const active = res.data.find(
+          (b) => !['COMPLETED', 'PAYMENT_COMPLETED', 'CANCELLED', 'REJECTED'].includes(b.operationalStatus) && b.bookingStatus !== 'COMPLETED'
+        ) || res.data[0];
+        if (active) setActiveBooking(active);
+      }
+    } catch (err) {
+      // Handled gracefully
+    } finally {
+      setIsLoadingBooking(false);
+    }
+  };
+
+  // Real-time synchronization via Socket.IO
+  useSocketQueue({
+    farmerId: user?.id || user?._id,
+    onQueueUpdate: () => {
+      fetchActiveBooking();
+    }
+  });
+
   useEffect(() => {
-    const fetchActiveBooking = async () => {
+    const fetchCentresAndMandis = async () => {
+      setIsLoadingCentres(true);
       try {
-        const res = await apiClient.get('/bookings/my');
-        if (res.success && res.data && res.data.length > 0) {
-          const upcoming = res.data.find((b) => b.bookingStatus === 'CONFIRMED');
-          if (upcoming) setActiveBooking(upcoming);
+        const [centresRes, mandisRes] = await Promise.allSettled([
+          apiClient.get(`/centres?lat=${LUCKNOW_COORDS.lat}&lon=${LUCKNOW_COORDS.lon}`),
+          apiClient.get('/mandis?district=Lucknow')
+        ]);
+
+        if (centresRes.status === 'fulfilled' && centresRes.value?.success) {
+          const cData = centresRes.value.data || [];
+          setCentres(cData);
+          if (cData.length > 0) setSelectedCentre(cData[0]);
+        }
+        if (mandisRes.status === 'fulfilled' && mandisRes.value?.success) {
+          setMandis(mandisRes.value.data || []);
         }
       } catch (err) {
-        // Handled gracefully
+        console.warn('[FarmerDashboard] Failed loading centres/mandis map data:', err.message);
       } finally {
-        setIsLoadingBooking(false);
+        setIsLoadingCentres(false);
       }
     };
 
     fetchActiveBooking();
+    fetchCentresAndMandis();
   }, []);
 
   const farmerActions = [
@@ -101,10 +164,14 @@ export const FarmerDashboardPage = () => {
           title={`${t('farmer.greeting', 'Namaste')}, ${user?.fullName || 'Kisan Bandhu'} 👋`}
           subtitle={t('farmer.welcome_sub', 'Your official agricultural procurement workspace')}
           badge={
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Badge variant="success" icon={ShieldCheck}>
                 {t('auth.role_farmer', 'Farmer')} • Verified
               </Badge>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-xs text-[11px] font-black uppercase shadow-[1px_1px_0px_#22252A]">
+                <span className="w-2 h-2 rounded-full bg-forest-green animate-pulse" />
+                <span>Lucknow District Operations</span>
+              </span>
             </div>
           }
           actions={
@@ -112,7 +179,7 @@ export const FarmerDashboardPage = () => {
               variant="outline"
               size="sm"
               onClick={() => setIsProfileModalOpen(true)}
-              className="bg-white hover:bg-forest-green-light"
+              className="bg-white hover:bg-forest-green-light cursor-pointer"
             >
               <User className="w-4 h-4 mr-1.5 text-forest-green" />
               <span>{t('farmer.view_profile', 'View Profile')}</span>
@@ -121,88 +188,260 @@ export const FarmerDashboardPage = () => {
         />
 
         {/* ========================================================================= */}
-        {/* 1. PRIMARY OPERATIONAL INFO: ACTIVE BOOKING / UPCOMING DELIVERY */}
+        {/* 1. PRIMARY OPERATIONAL INFO: ACTIVE PROCUREMENT JOURNEY HERO */}
         {/* ========================================================================= */}
         {activeBooking ? (
-          <div className="bg-forest-green text-white border-3 border-dark-neutral rounded-xs shadow-brutal-lg mb-8 p-6 sm:p-7 relative overflow-hidden">
-            {/* Faint ambient pattern in card background */}
+          <div className="bg-forest-green text-white border-2 border-dark-neutral rounded-xs shadow-brutal mb-6 p-4 sm:p-5 relative overflow-hidden">
             <div
-              className="absolute inset-0 opacity-[0.05] pointer-events-none"
+              className="absolute inset-0 opacity-[0.03] pointer-events-none"
               style={{
                 backgroundImage: 'radial-gradient(#FFFFFF 1px, transparent 1px)',
                 backgroundSize: '16px 16px'
               }}
             />
 
-            <div className="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
-              <div className="space-y-2 max-w-2xl">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-black uppercase tracking-wider text-dark-neutral bg-wheat-accent border border-dark-neutral px-3 py-1 rounded-xs inline-block shadow-[2px_2px_0px_#22252A]">
-                    {t('farmer.upcoming_visit', 'Upcoming Delivery Slot')}
+            <div className="relative z-10 space-y-3.5">
+              {/* 1. TOP ROW: Government Operational Header */}
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/15 pb-2.5">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-dark-neutral bg-wheat-accent px-2.5 py-0.5 rounded-xs border border-dark-neutral shadow-[1px_1px_0px_#22252A]">
+                    ACTIVE PROCUREMENT JOURNEY
                   </span>
-                  <span className="text-xs font-mono font-black text-white/90 bg-white/15 px-2.5 py-1 rounded-xs border border-white/20">
-                    Token: {activeBooking.tokenNumber || 'TKN-LKO-1042'}
+                  <span className="text-xs font-mono font-bold text-white/90">
+                    Token: <strong className="text-wheat-accent tracking-wide">{activeBooking.tokenNumber || 'TOK-TEST-55317189'}</strong>
                   </span>
                 </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-white/70 font-medium">Current Status:</span>
+                  <span className="text-xs font-bold uppercase tracking-wide bg-white/15 text-white px-2.5 py-0.5 rounded-xs border border-white/25">
+                    {(() => {
+                      const st = (activeBooking.operationalStatus || activeBooking.state || 'WAITING').toUpperCase();
+                      const match = CANONICAL_STAGES.find((s) => s.key === st);
+                      return match ? match.label : st.replace(/_/g, ' ');
+                    })()}
+                  </span>
+                </div>
+              </div>
 
-                <h2 className="text-2xl sm:text-3xl font-black font-heading text-white">
-                  {activeBooking.centre?.name || 'Krishi Seva Procurement Centre'}
-                </h2>
-
-                <p className="text-sm opacity-90 flex items-center gap-1.5 font-medium text-wheat-accent-light">
-                  <MapPin className="w-4 h-4 text-wheat-accent shrink-0" />
-                  <span>{activeBooking.centre?.address || 'Gomti Nagar, Lucknow'}</span>
-                </p>
-
-                {/* Delivery Snapshot Indicators */}
-                <div className="flex items-center gap-3 pt-2 text-xs font-bold flex-wrap">
-                  <div className="bg-white/10 text-white px-3 py-1.5 rounded-xs border border-white/30 flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5 text-wheat-accent" />
-                    <span>{activeBooking.bookingDate}</span>
+              {/* 2. MAIN CONTENT & CTA GRID: Balanced layout without empty space */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+                {/* Left: Main Facility & Appointment Details (8 cols on desktop) */}
+                <div className="lg:col-span-8 space-y-1.5 min-w-0">
+                  <h2 className="text-lg sm:text-xl font-black font-heading text-white leading-tight">
+                    {activeBooking.centre?.name || activeBooking.centreName || 'Krishi Seva Procurement Centre — Gomti Nagar'}
+                  </h2>
+                  <p className="text-xs text-wheat-accent-light flex items-center gap-1.5 font-medium">
+                    <MapPin className="w-3.5 h-3.5 text-wheat-accent shrink-0" />
+                    <span>{activeBooking.centre?.address || activeBooking.centreAddress || 'Vibhuti Khand, Gomti Nagar, Lucknow'}</span>
+                  </p>
+                  <div className="flex items-center gap-2 text-xs font-semibold text-white/90 flex-wrap pt-0.5">
+                    <span>
+                      {(() => {
+                        if (!activeBooking.bookingDate) return '06 Sep 2026';
+                        try {
+                          const d = new Date(activeBooking.bookingDate);
+                          if (isNaN(d.getTime())) return activeBooking.bookingDate;
+                          return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+                        } catch {
+                          return activeBooking.bookingDate;
+                        }
+                      })()}
+                    </span>
+                    <span className="text-white/40">·</span>
+                    <span>{activeBooking.timeWindow || '09:00–10:00 AM'}</span>
+                    <span className="text-white/40">·</span>
+                    <span>{activeBooking.cropType || 'Wheat'}</span>
+                    <span className="text-white/40">·</span>
+                    <span>{activeBooking.estimatedQuantityQuintals || activeBooking.quantityQuintals || 50} Qtl</span>
                   </div>
-                  <div className="bg-white/10 text-white px-3 py-1.5 rounded-xs border border-white/30 flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5 text-wheat-accent" />
-                    <span>{activeBooking.timeWindow || '09:00 AM - 10:00 AM'}</span>
-                  </div>
-                  <div className="bg-white/10 text-white px-3 py-1.5 rounded-xs border border-white/30 flex items-center gap-1.5">
-                    <Sprout className="w-3.5 h-3.5 text-wheat-accent" />
-                    <span>{activeBooking.cropType || 'Wheat'} • {activeBooking.estimatedQuantityQuintals || 50} Qtl</span>
+                </div>
+
+                {/* Right: Primary Action Button & Subordinate Links (4 cols on desktop) */}
+                <div className="lg:col-span-4 flex flex-col items-stretch lg:items-end gap-1.5 shrink-0">
+                  {(() => {
+                    const st = (activeBooking.operationalStatus || activeBooking.state || 'WAITING').toUpperCase();
+                    if (st === 'CALLED') {
+                      return (
+                        <Link to={`/farmer/procurement/${activeBooking.id || activeBooking._id}`} className="w-full lg:w-auto">
+                          <Button
+                            variant="primary"
+                            size="md"
+                            className="w-full lg:min-w-[200px] shadow-brutal min-h-[44px] font-black bg-amber-400 hover:bg-amber-300 text-dark-neutral border-2 border-dark-neutral justify-center text-sm uppercase tracking-wide animate-pulse motion-reduce:animate-none"
+                          >
+                            <span>Proceed to Counter →</span>
+                          </Button>
+                        </Link>
+                      );
+                    }
+                    if (st === 'PAYMENT_COMPLETED') {
+                      return (
+                        <Link to={`/farmer/procurement/${activeBooking.id || activeBooking._id}`} className="w-full lg:w-auto">
+                          <Button
+                            variant="secondary"
+                            size="md"
+                            className="w-full lg:min-w-[200px] shadow-brutal min-h-[44px] font-black bg-wheat-accent hover:bg-wheat-accent/90 text-dark-neutral border-2 border-dark-neutral justify-center text-sm"
+                          >
+                            <span>View Receipt →</span>
+                          </Button>
+                        </Link>
+                      );
+                    }
+                    return (
+                      <Link to={`/farmer/procurement/${activeBooking.id || activeBooking._id}`} className="w-full lg:w-auto">
+                        <Button
+                          variant="secondary"
+                          size="md"
+                          className="w-full lg:min-w-[200px] shadow-brutal min-h-[44px] font-black bg-wheat-accent hover:bg-wheat-accent/90 text-dark-neutral border-2 border-dark-neutral justify-center text-sm"
+                        >
+                          <span>Track Procurement →</span>
+                        </Button>
+                      </Link>
+                    );
+                  })()}
+
+                  {/* Subordinate Secondary Actions: Clean text links */}
+                  <div className="flex items-center justify-center lg:justify-end gap-3 text-xs pt-0.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const matched = centres.find(
+                          (c) => (c._id || c.id) === (activeBooking.centreId || activeBooking.centre?._id)
+                        ) || activeBooking.centre;
+                        if (matched) setDetailPanelCentre(matched);
+                        else navigate('/farmer/find-centres');
+                      }}
+                      className="text-white/80 hover:text-white underline-offset-2 hover:underline font-semibold focus:outline-none focus:ring-1 focus:ring-white rounded-xs px-1"
+                    >
+                      {t('farmer.btn_view_centre', 'View Centre')}
+                    </button>
+                    <span className="text-white/30">·</span>
+                    <a
+                      href={`https://www.google.com/maps/dir/?api=1&destination=${
+                        activeBooking.centre?.location?.coordinates?.[1] || 26.8467
+                      },${
+                        activeBooking.centre?.location?.coordinates?.[0] || 80.9462
+                      }`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-white/80 hover:text-white underline-offset-2 hover:underline font-semibold inline-flex items-center gap-1 focus:outline-none focus:ring-1 focus:ring-white rounded-xs px-1"
+                      title={t('farmer.external_nav_disclaimer', 'Launches external navigation in your mapping application.')}
+                    >
+                      <span>{t('farmer.btn_get_directions', 'Get Directions')}</span>
+                      <ExternalLink className="w-3 h-3 text-white/60" />
+                    </a>
                   </div>
                 </div>
               </div>
 
-              {/* View Action CTA */}
-              <div className="shrink-0 w-full sm:w-auto flex flex-col sm:flex-row gap-3">
-                <Link to={`/farmer/procurement/${activeBooking.id || activeBooking._id}`}>
-                  <Button
-                    variant="secondary"
-                    size="lg"
-                    className="w-full sm:w-auto shadow-brutal-sm min-h-[50px] font-black text-dark-neutral"
-                  >
-                    <span>{t('farmer.track_journey', 'Track Journey')}</span>
-                    <ArrowRight className="w-5 h-5 ml-1.5" />
-                  </Button>
-                </Link>
-                <Link to="/farmer/bookings">
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    className="w-full sm:w-auto bg-white/10 hover:bg-white/20 text-white border-white/40 min-h-[50px]"
-                  >
-                    <span>{t('farmer.view_ticket', 'View Ticket')}</span>
-                  </Button>
-                </Link>
+              {/* 3. OPERATIONAL CONTEXT: Compact Live Queue Strip */}
+              <div className="bg-emerald-950/70 border border-emerald-500/25 px-3 py-1.5 rounded-xs text-xs flex items-center gap-2 text-white/90">
+                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-300 shrink-0">
+                  LIVE QUEUE
+                </span>
+                <span className="text-white/30 shrink-0">·</span>
+                <span className="font-medium text-[11px] sm:text-xs">
+                  {(() => {
+                    const st = (activeBooking.operationalStatus || activeBooking.state || 'WAITING').toUpperCase();
+                    const isBeingServed = ['ARRIVED', 'VERIFICATION', 'QUALITY_CHECK', 'WEIGHING', 'PROCUREMENT_CONFIRMED', 'PAYMENT_PROCESSING'].includes(st);
+                    const counter = activeBooking.assignedStation || activeBooking.counterId || 'Counter 01';
+
+                    if (st === 'CALLED') {
+                      return `You have been called · Proceed to ${counter} immediately`;
+                    }
+                    if (st === 'PAYMENT_COMPLETED') {
+                      return 'Procurement complete · Direct Benefit Transfer (DBT) settled to bank';
+                    }
+                    if (isBeingServed) {
+                      return `You are currently being served · ${counter}`;
+                    }
+                    if (st === 'BOOKED') {
+                      return `Slot confirmed · Please arrive 15 minutes before your time slot`;
+                    }
+                    // WAITING state
+                    const ahead = activeBooking.farmersAhead !== undefined ? `${activeBooking.farmersAhead} ${activeBooking.farmersAhead === 1 ? 'farmer' : 'farmers'} ahead` : '3 farmers ahead';
+                    const wait = activeBooking.estimatedWaitMinutes ? `~${activeBooking.estimatedWaitMinutes} min wait` : '~18 min wait';
+                    return `Currently being served · ${counter} · ${ahead} · ${wait}`;
+                  })()}
+                </span>
+              </div>
+
+              {/* 4. NEXT STEP: Concise Operational Instruction */}
+              <div className="flex items-center gap-2 text-xs px-0.5">
+                <span className="text-[10px] font-black uppercase tracking-wider text-wheat-accent shrink-0">
+                  NEXT STEP:
+                </span>
+                <span className="font-medium text-white/95 truncate">
+                  {(() => {
+                    const st = (activeBooking.operationalStatus || activeBooking.state || 'WAITING').toUpperCase();
+                    switch (st) {
+                      case 'BOOKED':
+                        return t('farmer.next_action_booked', 'Prepare your documents and reach the centre during your slot.');
+                      case 'WAITING':
+                        return t('farmer.next_action_waiting', 'Please remain near the waiting area until your token is called.');
+                      case 'CALLED':
+                        return t('farmer.next_action_called', 'Proceed to the assigned counter with your vehicle and ID.');
+                      case 'ARRIVED':
+                        return t('farmer.next_action_arrived', 'Report to the gate for vehicle and document check.');
+                      case 'VERIFICATION':
+                        return t('farmer.next_action_verification', 'Your land and farmer identity documents are being verified.');
+                      case 'QUALITY_CHECK':
+                      case 'QUALITY':
+                        return t('farmer.next_action_quality_check', 'Your crop samples are undergoing quality assaying.');
+                      case 'WEIGHING':
+                      case 'WEIGHED':
+                        return t('farmer.next_action_weighing', 'Your produce is being weighed.');
+                      case 'PROCUREMENT_CONFIRMED':
+                        return t('farmer.next_action_procurement_confirmed', 'Procurement confirmed. Weighment slip and receipt are being generated.');
+                      case 'PAYMENT_PROCESSING':
+                        return t('farmer.next_action_payment_processing', 'Payment is being processed via PFMS / Direct Benefit Transfer.');
+                      case 'PAYMENT_COMPLETED':
+                        return t('farmer.next_action_payment_completed', 'Procurement complete. Tap View Receipt to download your official receipt.');
+                      default:
+                        return t('farmer.next_action_waiting', 'Please remain near the waiting area until your token is called.');
+                    }
+                  })()}
+                </span>
+              </div>
+
+              {/* 5. BOTTOM: Lightweight 10-Stage Procurement Progress Stepper */}
+              <div className="pt-2.5 border-t border-white/15">
+                <div className="flex items-center justify-between text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-wheat-accent mb-1.5">
+                  <span>PROCUREMENT PROGRESS</span>
+                  <span className="font-mono text-white/80">
+                    STAGE {(() => {
+                      const st = (activeBooking.operationalStatus || activeBooking.state || 'WAITING').toUpperCase();
+                      const matchIdx = CANONICAL_STAGES.findIndex((s) => s.key === st);
+                      return (matchIdx >= 0 ? matchIdx : 1) + 1;
+                    })()} OF 10
+                  </span>
+                </div>
+                <ProgressLadder
+                  stages={CANONICAL_STAGES}
+                  currentIndex={(() => {
+                    const st = (activeBooking.operationalStatus || activeBooking.state || 'WAITING').toUpperCase();
+                    const matchIdx = CANONICAL_STAGES.findIndex((s) => s.key === st);
+                    return matchIdx >= 0 ? matchIdx : 1;
+                  })()}
+                  compact={true}
+                  tone="dark"
+                  orientation="responsive"
+                />
               </div>
             </div>
           </div>
         ) : (
-          <div className="bg-emerald-50 border-3 border-dark-neutral rounded-xs shadow-brutal-lg mb-8 p-6 sm:p-7">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-              <div className="space-y-1.5 max-w-2xl">
-                <Badge variant="success" icon={Sprout} size="md">
-                  {t('farmer.season_active', 'Active Rabi/Kharif Season')}
-                </Badge>
-                <h2 className="text-xl sm:text-2xl font-black font-heading text-dark-neutral">
+          <div className="bg-emerald-50 border-3 border-dark-neutral rounded-xs shadow-brutal-lg mb-8 p-6 sm:p-8 space-y-6">
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 border-b-2 border-dark-neutral/10 pb-6">
+              <div className="space-y-2 max-w-2xl">
+                <div className="flex items-center gap-2">
+                  <Badge variant="success" icon={Sprout} size="md">
+                    {t('farmer.season_active', 'Active Rabi/Kharif Season')}
+                  </Badge>
+                  <span className="text-[11px] font-black uppercase tracking-wider bg-forest-green text-white px-2.5 py-0.5 rounded-xs border border-dark-neutral">
+                    Lucknow District (UP_LUK)
+                  </span>
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-black font-heading text-dark-neutral">
                   {t('farmer.ready_to_book', 'Ready to deliver your produce?')}
                 </h2>
                 <p className="text-xs sm:text-sm text-dark-neutral-muted leading-relaxed font-medium">
@@ -210,18 +449,192 @@ export const FarmerDashboardPage = () => {
                 </p>
               </div>
 
-              <Link to="/farmer/find-centres" className="shrink-0 w-full sm:w-auto">
-                <Button variant="primary" size="lg" className="w-full sm:w-auto shadow-brutal min-h-[52px] font-black">
-                  <span>🌾 {t('farmer.book_slot_now', 'Book a Slot Now')}</span>
-                  <ArrowRight className="w-5 h-5 ml-1.5" />
-                </Button>
-              </Link>
+              <div className="shrink-0 w-full sm:w-auto flex flex-col sm:flex-row gap-3">
+                <Link to="/farmer/book-slot" className="w-full sm:w-auto">
+                  <Button variant="primary" size="lg" className="w-full sm:w-auto shadow-brutal min-h-[50px] font-black">
+                    <span>🌾 {t('farmer.btn_book_slot_cta', 'Book a Delivery Slot')}</span>
+                    <ArrowRight className="w-5 h-5 ml-1.5" />
+                  </Button>
+                </Link>
+                <Link to="/farmer/find-centres" className="w-full sm:w-auto">
+                  <Button variant="outline" size="lg" className="w-full sm:w-auto min-h-[50px] font-bold border-2 border-dark-neutral bg-white text-dark-neutral hover:bg-emerald-50">
+                    <span>📍 {t('farmer.btn_find_centre_cta', 'Find Nearby Centre')}</span>
+                  </Button>
+                </Link>
+              </div>
+            </div>
+
+            {/* 4-Step Procurement Onboarding Guide */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-xs font-black uppercase tracking-wider text-dark-neutral flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-forest-green" />
+                  <span>How Government Procurement Works (4 Easy Steps)</span>
+                </h3>
+                <span className="text-[11px] font-bold text-dark-neutral-muted hidden sm:inline">
+                  3 Mandis • 8 Centres • Transparent DBT
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="bg-white p-3.5 rounded-xs border-2 border-dark-neutral shadow-[2px_2px_0px_#22252A] flex flex-col justify-between">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="w-6 h-6 rounded-full bg-emerald-100 text-forest-green text-xs font-black flex items-center justify-center border border-forest-green/40">
+                        1
+                      </span>
+                      <MapPin className="w-4 h-4 text-forest-green" />
+                    </div>
+                    <h4 className="text-xs font-black text-dark-neutral">Find Nearby Centre</h4>
+                    <p className="text-[11px] text-dark-neutral-muted leading-snug">
+                      Locate the nearest centre across 3 Lucknow mandis with live queue times.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-white p-3.5 rounded-xs border-2 border-dark-neutral shadow-[2px_2px_0px_#22252A] flex flex-col justify-between">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="w-6 h-6 rounded-full bg-emerald-100 text-forest-green text-xs font-black flex items-center justify-center border border-forest-green/40">
+                        2
+                      </span>
+                      <Calendar className="w-4 h-4 text-forest-green" />
+                    </div>
+                    <h4 className="text-xs font-black text-dark-neutral">Select Delivery Slot</h4>
+                    <p className="text-[11px] text-dark-neutral-muted leading-snug">
+                      Reserve a guaranteed 1-hour window and receive an instant digital arrival token.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-white p-3.5 rounded-xs border-2 border-dark-neutral shadow-[2px_2px_0px_#22252A] flex flex-col justify-between">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="w-6 h-6 rounded-full bg-emerald-100 text-forest-green text-xs font-black flex items-center justify-center border border-forest-green/40">
+                        3
+                      </span>
+                      <ShieldCheck className="w-4 h-4 text-forest-green" />
+                    </div>
+                    <h4 className="text-xs font-black text-dark-neutral">Produce & Assaying</h4>
+                    <p className="text-[11px] text-dark-neutral-muted leading-snug">
+                      Bring produce with Aadhaar/Kisan card for certified moisture assay and grading.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-white p-3.5 rounded-xs border-2 border-dark-neutral shadow-[2px_2px_0px_#22252A] flex flex-col justify-between">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="w-6 h-6 rounded-full bg-emerald-100 text-forest-green text-xs font-black flex items-center justify-center border border-forest-green/40">
+                        4
+                      </span>
+                      <CreditCard className="w-4 h-4 text-forest-green" />
+                    </div>
+                    <h4 className="text-xs font-black text-dark-neutral">Weighing & Direct DBT</h4>
+                    <p className="text-[11px] text-dark-neutral-muted leading-snug">
+                      Electronic weighbridge net calculation, instant receipt, and direct bank settlement.
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
 
         {/* ========================================================================= */}
-        {/* 2. FARMER SERVICES & PROFILE GRID */}
+        {/* 2. MAP-FIRST DISTRICT OPERATIONS HUB (Lucknow 8 Centres + 3 Mandis) */}
+        {/* ========================================================================= */}
+        <div className="bg-white border-3 border-dark-neutral rounded-xs shadow-brutal-lg p-5 sm:p-6 mb-8 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-dark-neutral/10 pb-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="w-2.5 h-2.5 rounded-full bg-forest-green animate-pulse" />
+                <span className="text-[11px] font-black uppercase tracking-wider text-forest-green">
+                  District Command Operations: Lucknow (UP_LUK)
+                </span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-heading font-black text-dark-neutral">
+                Interactive Procurement Network & Mandi Hubs
+              </h2>
+            </div>
+            <Link to="/farmer/find-centres">
+              <Button variant="outline" size="sm" className="font-bold bg-warm-ivory">
+                <span>View Full Discovery Page</span>
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            </Link>
+          </div>
+
+          {/* Interactive Map Canvas on Dashboard */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            <div className="lg:col-span-8">
+              <GoogleCentreMap
+                centres={centres}
+                mandis={mandis}
+                selectedCentre={selectedCentre}
+                onSelectCentre={(c) => {
+                  setSelectedCentre(c);
+                  setDetailPanelCentre(c);
+                }}
+                userLocation={LUCKNOW_COORDS}
+                locationMode="REGISTERED"
+                height="h-[400px] sm:h-[460px]"
+              />
+            </div>
+
+            {/* Side Quick Centre Selector */}
+            <div className="lg:col-span-4 flex flex-col justify-between space-y-3">
+              <div className="space-y-2">
+                <div className="flex justify-between items-center text-xs font-black uppercase text-dark-neutral">
+                  <span>Available Centres ({centres.length})</span>
+                  <span className="text-dark-neutral-muted">Tap to preview</span>
+                </div>
+
+                <div className="max-h-[360px] overflow-y-auto space-y-2 pr-1">
+                  {centres.slice(0, 6).map((c) => {
+                    const isSelected = selectedCentre && (selectedCentre._id === c._id || selectedCentre.id === c.id);
+                    return (
+                      <div
+                        key={c._id || c.id}
+                        onClick={() => {
+                          setSelectedCentre(c);
+                          setDetailPanelCentre(c);
+                        }}
+                        className={`p-3 rounded-xs border-2 border-dark-neutral transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-emerald-50 shadow-brutal-sm -translate-y-0.5'
+                            : 'bg-warm-ivory hover:bg-gray-100 shadow-[1px_1px_0px_#22252A]'
+                        }`}
+                      >
+                        <div className="flex justify-between items-start gap-1">
+                          <h4 className="font-heading font-black text-xs text-dark-neutral truncate">
+                            {c.name}
+                          </h4>
+                          <span className="font-mono text-[10px] font-bold text-forest-green shrink-0">
+                            {c.availableSlotsToday || 12} slots
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-dark-neutral-muted truncate mt-0.5">
+                          {c.address}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <Link to="/farmer/find-centres" className="block pt-2">
+                <Button variant="primary" size="md" fullWidth className="font-black">
+                  <span>Explore All {centres.length} Lucknow Centres</span>
+                  <ArrowRight className="w-4 h-4 ml-1.5" />
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* ========================================================================= */}
+        {/* 3. FARMER SERVICES & PROFILE GRID */}
         {/* ========================================================================= */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
           {/* Quick Profile Summary Card */}
@@ -233,7 +646,7 @@ export const FarmerDashboardPage = () => {
               headerAction={
                 <button
                   onClick={() => setIsProfileModalOpen(true)}
-                  className="text-xs font-black text-forest-green hover:underline flex items-center gap-1"
+                  className="text-xs font-black text-forest-green hover:underline flex items-center gap-1 cursor-pointer"
                 >
                   <span>{t('common.view_details', 'Details')}</span>
                   <ExternalLink className="w-3 h-3" />
@@ -298,10 +711,10 @@ export const FarmerDashboardPage = () => {
                   size="sm"
                   fullWidth
                   onClick={() => setIsProfileModalOpen(true)}
-                  className="bg-warm-ivory"
+                  className="bg-warm-ivory hover:bg-forest-green-light cursor-pointer font-black"
                 >
                   <User className="w-4 h-4 mr-1.5 text-forest-green" />
-                  <span>View Full Farming Profile</span>
+                  <span>{t('farmer.edit_profile_btn', 'Edit Farmer Profile')}</span>
                 </Button>
               </div>
             </Card>
@@ -349,6 +762,19 @@ export const FarmerDashboardPage = () => {
           </div>
         </div>
       </main>
+
+      {/* Slide-out Centre Details Drawer on Dashboard */}
+      <CentreDetailsPanel
+        centre={detailPanelCentre}
+        isOpen={!!detailPanelCentre}
+        onClose={() => setDetailPanelCentre(null)}
+        onBookSlot={(c) => {
+          setDetailPanelCentre(null);
+          navigate(`/farmer/book-slot?centreId=${c._id || c.id}`);
+        }}
+        userLocation={LUCKNOW_COORDS}
+        activeBooking={activeBooking}
+      />
 
       {/* Full Profile Modal */}
       <FarmerProfileModal

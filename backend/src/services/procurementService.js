@@ -34,19 +34,16 @@ const recordVerification = async ({ bookingId, verifiedQuantityQuintals, moistur
   if (staffUser && staffUser.role === 'CENTRE_STAFF') {
     const staffCentre = staffUser.assignedCentreId ? staffUser.assignedCentreId.toString() : null;
     const bookingCentre = (booking.centreId?._id || booking.centreId).toString();
-    if (staffCentre && staffCentre !== bookingCentre) {
-      const isPrimaryDemoAlias = (staffCentre === 'c1' || bookingCentre === 'c1');
-      if (!isPrimaryDemoAlias) {
-        throw new Error('Access denied. You are only authorized to operate on bookings for your assigned procurement centre.');
-      }
+    if (staffCentre && bookingCentre && staffCentre !== bookingCentre) {
+      throw new Error('Access denied. You are only authorized to operate on bookings for your assigned procurement centre.');
     }
   }
 
   const verQty = Number(verifiedQuantityQuintals) || booking.estimatedQuantityQuintals;
-  const moisture = Number(moisturePercentage) || 12.0;
+  const moisture = Number(moisturePercentage !== undefined ? moisturePercentage : 12.0);
 
-  if (moisture < 0 || moisture > 100) {
-    throw new Error('Moisture percentage must be between 0% and 100%.');
+  if (isNaN(moisture) || moisture < 5.0 || moisture > 30.0) {
+    throw new Error('Moisture percentage must be between 5.0% and 30.0% for agricultural procurement intake.');
   }
 
   if (verQty <= 0) {
@@ -124,7 +121,7 @@ const recordVerification = async ({ bookingId, verifiedQuantityQuintals, moistur
 /**
  * Record Net Weighing & Complete Procurement Transaction
  */
-const completeProcurementTransaction = async ({ bookingId, netWeightQuintals, deductions = 0, staffUser, notes, io }) => {
+const completeProcurementTransaction = async ({ bookingId, netWeightQuintals, grossWeightQuintals, tareWeightQuintals, deductions = 0, staffUser, notes, io }) => {
   let booking = null;
   try {
     booking = await Booking.findById(bookingId).populate('farmerId', 'fullName phone').populate('centreId', 'name centreCode address');
@@ -140,20 +137,12 @@ const completeProcurementTransaction = async ({ bookingId, netWeightQuintals, de
     throw new Error(`Booking ${bookingId} not found.`);
   }
 
-  if (staffUser && staffUser.role === 'CENTRE_STAFF') {
+  if (staffUser && staffUser.role !== 'ADMIN') {
     const staffCentre = staffUser.assignedCentreId ? staffUser.assignedCentreId.toString() : null;
     const bookingCentre = (booking.centreId?._id || booking.centreId).toString();
-    if (staffCentre && staffCentre !== bookingCentre) {
-      const isPrimaryDemoAlias = (staffCentre === 'c1' || bookingCentre === 'c1');
-      if (!isPrimaryDemoAlias) {
-        throw new Error('Access denied. You are only authorized to operate on bookings for your assigned procurement centre.');
-      }
+    if (staffCentre && bookingCentre && staffCentre !== bookingCentre) {
+      throw new Error('Access denied. You are only authorized to operate on bookings for your assigned procurement centre.');
     }
-  }
-
-  const netWeight = Number(netWeightQuintals);
-  if (!netWeight || netWeight <= 0) {
-    throw new Error('Net weight must be a positive number greater than 0 quintals.');
   }
 
   let procurement = null;
@@ -163,18 +152,83 @@ const completeProcurementTransaction = async ({ bookingId, netWeightQuintals, de
     procurement = inMemoryProcurements.get(bookingId.toString());
   }
 
-  if (!procurement) {
+  if (!procurement && inMemoryProcurements.has(bookingId.toString())) {
     procurement = inMemoryProcurements.get(bookingId.toString());
+  }
+
+  // Idempotency: If already completed, return existing completed transaction safely
+  if (procurement && procurement.status === 'COMPLETED') {
+    return {
+      procurement,
+      receipt: {
+        receiptSerialNumber: procurement.receiptSerialNumber,
+        tokenNumber: booking.tokenNumber,
+        farmerName: booking.farmerId?.fullName || 'Farmer',
+        farmerPhone: booking.farmerId?.phone || '',
+        centreName: booking.centreId?.name || 'Krishi Seva Procurement Centre',
+        centreAddress: booking.centreId?.address || '',
+        cropType: booking.cropType,
+        verifiedQuantityQuintals: procurement.verifiedQuantityQuintals || procurement.netWeightQuintals,
+        netWeightQuintals: procurement.netWeightQuintals,
+        moisturePercentage: procurement.moisturePercentage || 12.0,
+        qualityGrade: procurement.qualityGrade || 'Grade A',
+        procurementRatePerQuintal: procurement.procurementRatePerQuintal || getMspRateForCrop(booking.cropType),
+        grossAmount: procurement.grossAmount,
+        deductions: procurement.deductions || 0,
+        netPayableAmount: procurement.netPayableAmount,
+        completedAt: procurement.completedAt || new Date()
+      },
+      idempotent: true
+    };
+  }
+
+  // Weighbridge server-authoritative calculations
+  let netWeight;
+  if (grossWeightQuintals !== undefined && tareWeightQuintals !== undefined) {
+    const gross = Number(grossWeightQuintals);
+    const tare = Number(tareWeightQuintals);
+    if (isNaN(gross) || gross <= 0) {
+      throw new Error('Gross weighbridge weight must be a positive number greater than 0.');
+    }
+    if (isNaN(tare) || tare < 0) {
+      throw new Error('Tare weighbridge weight cannot be negative.');
+    }
+    if (gross <= tare) {
+      throw new Error('Weighbridge calculation error: Gross weight must be strictly greater than tare weight.');
+    }
+    netWeight = Number((gross - tare).toFixed(2));
+  } else {
+    netWeight = Number(netWeightQuintals);
+    if (isNaN(netWeight) || netWeight <= 0) {
+      throw new Error('Net weight must be a positive number greater than 0 quintals.');
+    }
   }
 
   const mspRate = getMspRateForCrop(booking.cropType);
   const grossAmount = Math.round(netWeight * mspRate);
   const netPayableAmount = Math.max(0, grossAmount - Number(deductions));
 
-  const cleanCentreCode = booking.centreId?.centreCode || 'SEH01';
+  const cleanCentreCode = booking.centreId?.centreCode || 'LKO01';
   const cleanDate = getTodayIST().replace(/-/g, '');
-  const seqSuffix = Math.floor(100 + Math.random() * 900);
+  const seqSuffix = `${Date.now().toString().slice(-4)}${Math.floor(100 + Math.random() * 900)}`;
   const receiptSerialNumber = `REC-${cleanCentreCode}-${cleanDate}-${seqSuffix}`;
+
+  if (!procurement) {
+    try {
+      procurement = await Procurement.create({
+        bookingId: booking._id,
+        farmerId: booking.farmerId?._id || booking.farmerId,
+        centreId: booking.centreId?._id || booking.centreId,
+        tokenNumber: booking.tokenNumber,
+        cropType: booking.cropType,
+        declaredQuantityQuintals: booking.estimatedQuantityQuintals,
+        procurementRatePerQuintal: mspRate,
+        status: 'VERIFICATION'
+      });
+    } catch (createErr) {
+      procurement = inMemoryProcurements.get(bookingId.toString());
+    }
+  }
 
   if (procurement && procurement.save) {
     procurement.netWeightQuintals = netWeight;
@@ -240,6 +294,17 @@ const completeProcurementTransaction = async ({ bookingId, netWeightQuintals, de
     event: 'PROCUREMENT_COMPLETED',
     io
   });
+
+  if (io) {
+    io.to('admin_global').emit('procurement:completed', {
+      bookingId,
+      receiptSerialNumber,
+      netWeightQuintals: netWeight,
+      netPayableAmount,
+      cropType: booking.cropType,
+      centreId: (booking.centreId?._id || booking.centreId)?.toString()
+    });
+  }
 
   return {
     procurement,

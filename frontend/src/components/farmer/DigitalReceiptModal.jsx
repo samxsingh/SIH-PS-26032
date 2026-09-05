@@ -138,6 +138,12 @@ export const DigitalReceiptModal = ({ isOpen, onClose, receipt }) => {
           </table>
         </div>
 
+        {/* Simulated DBT Disclaimer */}
+        <div className="p-3 bg-amber-50 border-2 border-amber-600 rounded-xs text-[11px] text-amber-950 font-bold flex items-center justify-between gap-2 shadow-[1px_1px_0px_#22252A]">
+          <span>📢 Demo Payment Status — Visual Tracking Only. Real DBT transactions would route through PFMS / NPCI gateway.</span>
+          <span className="font-mono text-[10px] bg-white px-2 py-0.5 rounded border border-amber-400 shrink-0">Simulated Flow</span>
+        </div>
+
         {/* Footer Verification Notice */}
         <div className="pt-2 text-center text-[10px] font-bold text-dark-neutral-muted border-t-2 border-dark-neutral/20 flex items-center justify-between">
           <span>{t('farmer.receipt_verification_code', { code: receipt.receiptSerialNumber })}</span>

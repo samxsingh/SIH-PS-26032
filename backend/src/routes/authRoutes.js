@@ -4,6 +4,7 @@ const {
   register,
   login,
   getMe,
+  updateProfile,
   getStatesHandler,
   getDistrictsHandler,
   getVillagesHandler,
@@ -16,6 +17,7 @@ const { authenticate } = require('../middleware/authMiddleware');
 router.post('/register', validateRegister, register);
 router.post('/login', validateLogin, login);
 router.get('/me', authenticate, getMe);
+router.patch('/profile', authenticate, updateProfile);
 router.post('/logout', (req, res) => res.status(200).json({ success: true, message: 'Logged out successfully' }));
 
 // Location directory APIs

@@ -168,19 +168,23 @@ const login = async (req, res, next) => {
 
     const isAllowedAdminEmail = ['admin@agrinexus.demo', 'admin@agrinexus.gov.in', (process.env.ADMIN_EMAIL || '').toLowerCase()].filter(Boolean).includes(identifier.toLowerCase());
 
+    const lookupEmails = identifier.toLowerCase() === 'sehore.centre@agrinexus.demo'
+      ? ['sehore.centre@agrinexus.demo', 'gomtinagar.centre@agrinexus.demo']
+      : [identifier.toLowerCase()];
+
     let user = null;
     try {
       user = await User.findOne({
         $or: [
           { phone: identifier },
-          { email: identifier.toLowerCase() },
+          { email: { $in: lookupEmails } },
           ...(isAllowedAdminEmail ? [{ role: 'ADMIN' }] : [])
         ]
       }).select('+passwordHash');
     } catch (dbErr) {
       for (const [, u] of inMemoryUsers) {
         if (
-          (u.email && u.email.toLowerCase() === identifier.toLowerCase()) ||
+          (u.email && lookupEmails.includes(u.email.toLowerCase())) ||
           u.phone === identifier ||
           (isAllowedAdminEmail && u.role === 'ADMIN')
         ) {
@@ -193,7 +197,7 @@ const login = async (req, res, next) => {
     if (!user && inMemoryUsers.size > 0) {
       for (const [, u] of inMemoryUsers) {
         if (
-          (u.email && u.email.toLowerCase() === identifier.toLowerCase()) ||
+          (u.email && lookupEmails.includes(u.email.toLowerCase())) ||
           u.phone === identifier ||
           (isAllowedAdminEmail && u.role === 'ADMIN')
         ) {
@@ -250,7 +254,7 @@ const login = async (req, res, next) => {
             success: false,
             error: {
               code: 'EMAIL_REQUIRED',
-              message: 'Centre Staff accounts must log in using your Official Centre Email (e.g. sehore.centre@agrinexus.demo), not a mobile number.'
+              message: 'Centre Staff accounts must log in using your Official Centre Email (e.g. gomtinagar.centre@agrinexus.demo), not a mobile number.'
             }
           });
         }
@@ -588,10 +592,70 @@ const getLocationProvenanceHandler = async (req, res, next) => {
   }
 };
 
+// @desc    Update Farmer Profile
+// @route   PATCH /api/auth/profile
+// @access  Private (Farmer, etc.)
+const updateProfile = async (req, res, next) => {
+  try {
+    const userId = req.user.id || req.user._id;
+    const { fullName, villageName, languagePreference } = req.body;
+
+    const updates = {};
+    if (fullName !== undefined) updates.fullName = fullName.trim();
+    if (villageName !== undefined) updates.villageName = villageName.trim();
+    if (languagePreference !== undefined) updates.languagePreference = languagePreference;
+
+    let updatedUser = null;
+    try {
+      updatedUser = await User.findByIdAndUpdate(
+        userId,
+        { $set: updates },
+        { new: true, runValidators: true }
+      ).select('-password');
+    } catch (dbErr) {
+      // In-memory fallback
+      if (inMemoryUsers && inMemoryUsers.has(userId)) {
+        const u = inMemoryUsers.get(userId);
+        Object.assign(u, updates);
+        updatedUser = { ...u };
+        delete updatedUser.password;
+      }
+    }
+
+    if (!updatedUser) {
+      // Check inMemoryUsers by string id
+      for (const [key, u] of inMemoryUsers.entries()) {
+        if (key.toString() === userId.toString() || u._id === userId || u.id === userId) {
+          Object.assign(u, updates);
+          updatedUser = { ...u };
+          delete updatedUser.password;
+          break;
+        }
+      }
+    }
+
+    if (!updatedUser) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'USER_NOT_FOUND', message: 'User not found to update profile' }
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Profile updated successfully',
+      data: updatedUser
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   register,
   login,
   getMe,
+  updateProfile,
   getStatesHandler,
   getDistrictsHandler,
   getVillagesHandler,

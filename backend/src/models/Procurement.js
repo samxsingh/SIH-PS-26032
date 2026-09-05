@@ -73,7 +73,16 @@ const procurementSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['PENDING', 'VERIFICATION', 'WEIGHING', 'COMPLETED', 'REJECTED', 'CANCELLED'],
+      enum: [
+        'PENDING',
+        'VERIFICATION',
+        'QUALITY_CHECK',
+        'WEIGHING',
+        'PROCUREMENT_CONFIRMED',
+        'COMPLETED',
+        'REJECTED',
+        'CANCELLED'
+      ],
       default: 'PENDING'
     },
     receiptSerialNumber: {

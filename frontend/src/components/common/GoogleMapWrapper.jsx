@@ -5,20 +5,25 @@ import { calculateHaversineDistance, getDirectionsUrl } from '../../services/goo
 
 export const GoogleMapWrapper = ({
   centres = [],
+  mandis = [],
   selectedCentre,
   onSelectCentre,
+  onSelectMandi,
   userLocation = { lat: 26.8467, lon: 80.9462 },
   locationMode = 'REGISTERED',
   height = 'h-96',
   interactiveSelect = false,
   onLocationSelected = null,
-  initialCoordinates = null
+  initialCoordinates = null,
+  showRoute = false
 }) => {
   const { t } = useTranslation();
   const mapRef = useRef(null);
   const googleMapInstanceRef = useRef(null);
   const leafletMapRef = useRef(null);
   const markersRef = useRef({});
+  const mandiMarkersRef = useRef({});
+  const routePolylineRef = useRef(null);
   const selectionMarkerRef = useRef(null);
 
   const [mapEngine, setMapEngine] = useState('LOADING'); // 'GOOGLE' | 'LEAFLET' | 'LOADING'
@@ -191,7 +196,8 @@ export const GoogleMapWrapper = ({
                 </span>
                 ${distance != null ? `<span style="font-size: 10px; font-weight: bold; color: #4B5563;">~${distance} km</span>` : ''}
               </div>
-              <h4 style="margin: 2px 0 4px 0; font-size: 13px; font-weight: 800; line-height: 1.2;">${centre.name}</h4>
+              <h4 style="margin: 2px 0 2px 0; font-size: 13px; font-weight: 800; line-height: 1.2;">${centre.name}</h4>
+              ${(centre.mandiName || centre.mandiId?.name) ? `<div style="font-size: 10px; font-weight: bold; color: #1B4D3E; margin-bottom: 3px;">🏛️ Mandi: ${centre.mandiName || centre.mandiId?.name}</div>` : ''}
               <p style="margin: 0 0 6px 0; font-size: 11px; color: #4B5563;">${centre.address}</p>
               <div style="margin-bottom: 8px; font-size: 11px; font-weight: bold; color: #1B4D3E;">
                 🌾 ${centre.availableSlotsToday || 12} ${t('farmer.available_slots_badge', 'slots available')}
@@ -215,13 +221,39 @@ export const GoogleMapWrapper = ({
 
         markersRef.current[centre.id || centre._id] = marker;
       });
+
+      // Plot Mandi markers
+      mandis.forEach((mandi) => {
+        const lat = mandi.location?.coordinates?.[1] || 26.8500;
+        const lng = mandi.location?.coordinates?.[0] || 80.9500;
+
+        const marker = new window.google.maps.Marker({
+          position: { lat, lng },
+          map: gMap,
+          title: mandi.name,
+          icon: {
+            path: window.google.maps.SymbolPath.CIRCLE,
+            scale: 8,
+            fillColor: '#1E3A8A',
+            fillOpacity: 1,
+            strokeWeight: 2,
+            strokeColor: '#22252A'
+          }
+        });
+
+        marker.addListener('click', () => {
+          if (onSelectMandi) onSelectMandi(mandi);
+        });
+
+        mandiMarkersRef.current[mandi._id || mandi.id || mandi.mandiCode] = marker;
+      });
     }
 
     return () => {
       // Cleanup
       googleMapInstanceRef.current = null;
     };
-  }, [mapEngine, centres, userLocation, locationMode, interactiveSelect]);
+  }, [mapEngine, centres, mandis, userLocation, locationMode, interactiveSelect, onSelectCentre, onSelectMandi]);
 
   // Smooth pan on selectedCentre change in Google Maps
   useEffect(() => {
@@ -265,7 +297,7 @@ export const GoogleMapWrapper = ({
         const centerLat = selectedCentre?.location?.coordinates?.[1] || selectedCoords.lat;
         const centerLon = selectedCentre?.location?.coordinates?.[0] || selectedCoords.lng;
 
-        const map = L.map(mapRef.current, { scrollWheelZoom: false }).setView([centerLat, centerLon], 12);
+        const map = L.map(mapRef.current, { scrollWheelZoom: false, keyboard: false }).setView([centerLat, centerLon], 12);
         leafletMapRef.current = map;
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -330,7 +362,8 @@ export const GoogleMapWrapper = ({
                   </span>
                   ${distance != null ? `<span style="font-size: 10px; font-weight: bold; color: #4B5563;">~${distance} km</span>` : ''}
                 </div>
-                <h4 style="margin: 2px 0 4px 0; font-size: 13px; font-weight: 800; line-height: 1.2;">${centre.name}</h4>
+                <h4 style="margin: 2px 0 2px 0; font-size: 13px; font-weight: 800; line-height: 1.2;">${centre.name}</h4>
+                ${(centre.mandiName || centre.mandiId?.name) ? `<div style="font-size: 10px; font-weight: bold; color: #1B4D3E; margin-bottom: 3px;">🏛️ Mandi: ${centre.mandiName || centre.mandiId?.name}</div>` : ''}
                 <p style="margin: 0 0 6px 0; font-size: 11px; color: #4B5563;">${centre.address}</p>
                 <div style="margin-bottom: 8px; font-size: 11px; font-weight: bold; color: #1B4D3E;">
                   🌾 ${centre.availableSlotsToday || 12} ${t('farmer.available_slots_badge', 'slots available')}
@@ -346,6 +379,58 @@ export const GoogleMapWrapper = ({
               </div>
             `);
           });
+          // Plot Mandi markers
+          mandis.forEach((mandi) => {
+            const lat = mandi.location?.coordinates?.[1] || 26.8500;
+            const lon = mandi.location?.coordinates?.[0] || 80.9500;
+
+            const mandiIcon = L.divIcon({
+              className: 'custom-mandi-icon',
+              html: `<div style="background-color: #1E3A8A; color: white; width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; border: 2px solid #22252A; box-shadow: 2px 2px 0px #22252A; font-size: 14px;" title="${mandi.name}">🏛️</div>`,
+              iconSize: [32, 32],
+              iconAnchor: [16, 16]
+            });
+
+            const marker = L.marker([lat, lon], { icon: mandiIcon }).addTo(map);
+            marker.bindPopup(`
+              <div style="font-family: sans-serif; padding: 6px; max-width: 220px; color: #22252A;">
+                <span style="font-size: 10px; font-weight: 900; text-transform: uppercase; color: #1E3A8A;">
+                  🏛️ APMC Mandi
+                </span>
+                <h4 style="margin: 2px 0 4px 0; font-size: 13px; font-weight: 800; line-height: 1.2;">${mandi.name}</h4>
+                <p style="margin: 0 0 4px 0; font-size: 11px; color: #4B5563;">${mandi.address || 'Lucknow, UP'}</p>
+                <span style="font-mono; font-size: 10px; background: #EFF6FF; border: 1px solid #BFDBFE; padding: 2px 4px; border-radius: 2px; font-weight: bold; color: #1E3A8A;">
+                  ${mandi.mandiCode || 'MND_LKO'}
+                </span>
+              </div>
+            `);
+
+            marker.on('click', () => {
+              if (onSelectMandi) onSelectMandi(mandi);
+            });
+          });
+
+          // Draw route polyline from userLocation to selectedCentre if showRoute is enabled
+          if (showRoute && selectedCentre?.location?.coordinates) {
+            const destLat = selectedCentre.location.coordinates[1];
+            const destLon = selectedCentre.location.coordinates[0];
+            const startLat = userLocation?.lat || 26.8467;
+            const startLon = userLocation?.lon || 80.9462;
+
+            const latlngs = [
+              [startLat, startLon],
+              [destLat, destLon]
+            ];
+
+            const polyline = L.polyline(latlngs, {
+              color: '#1B4D3E',
+              weight: 4,
+              dashArray: '6, 8',
+              opacity: 0.8
+            }).addTo(map);
+
+            routePolylineRef.current = polyline;
+          }
         }
       } catch (err) {
         console.warn('[Leaflet Map Warning] Initialization handled gracefully:', err.message);
@@ -361,7 +446,7 @@ export const GoogleMapWrapper = ({
         leafletMapRef.current = null;
       }
     };
-  }, [mapEngine, centres, userLocation, locationMode, interactiveSelect]);
+  }, [mapEngine, centres, mandis, userLocation, locationMode, interactiveSelect, selectedCentre, showRoute, onSelectMandi]);
 
   // Smooth pan on selectedCentre change in Leaflet
   useEffect(() => {
@@ -459,6 +544,10 @@ export const GoogleMapWrapper = ({
             <span className="flex items-center gap-1">
               <span className="w-2.5 h-2.5 rounded-xs bg-forest-green border border-dark-neutral inline-block"></span>
               <span>{t('farmer.map_legend_centre')}</span>
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="text-xs">🏛️</span>
+              <span>{t('farmer.map_legend_mandi', 'APMC Mandi')}</span>
             </span>
             <span className="flex items-center gap-1">
               <span className={`w-2.5 h-2.5 rounded-xs ${locationMode === 'GPS' ? 'bg-info-blue' : 'bg-forest-green'} border border-dark-neutral inline-block`}></span>

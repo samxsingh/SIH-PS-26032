@@ -101,6 +101,22 @@ const procurementCentreSchema = new mongoose.Schema(
       ref: 'User',
       default: null
     },
+    centreType: {
+      type: String,
+      enum: ['PROCUREMENT_CENTRE', 'MANDI', 'COLLECTION_POINT', 'MARKET_YARD'],
+      default: 'PROCUREMENT_CENTRE'
+    },
+    mandiId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Mandi',
+      default: null
+    },
+    staffIds: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+      }
+    ],
     locality: {
       type: String,
       trim: true,
@@ -144,6 +160,7 @@ procurementCentreSchema.index({ location: '2dsphere' });
 procurementCentreSchema.index({ district: 1, isActive: 1 });
 procurementCentreSchema.index({ verificationStatus: 1 });
 procurementCentreSchema.index({ currentHeadId: 1 });
+procurementCentreSchema.index({ mandiId: 1 });
 
 const ProcurementCentre = mongoose.model('ProcurementCentre', procurementCentreSchema);
 

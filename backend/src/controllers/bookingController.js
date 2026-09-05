@@ -1,6 +1,7 @@
 const Booking = require('../models/Booking');
+const QueueEntry = require('../models/QueueEntry');
 const ProcurementCentre = require('../models/ProcurementCentre');
-const { createBooking, inMemoryBookings } = require('../services/bookingService');
+const { createBooking, inMemoryBookings, inMemoryQueueEntries } = require('../services/bookingService');
 const { inMemoryCentres } = require('./centreController');
 
 const createFarmerBooking = async (req, res, next) => {
@@ -100,28 +101,113 @@ const getMyBookings = async (req, res, next) => {
       }
     }
 
-    const formattedBookings = bookings.map((b) => ({
-      id: b._id ? b._id.toString() : b.id,
-      bookingReference: b.bookingReference,
-      tokenNumber: b.tokenNumber,
-      bookingDate: b.bookingDate,
-      timeWindow: b.timeWindow,
-      cropType: b.cropType,
-      estimatedQuantityQuintals: b.estimatedQuantityQuintals,
-      bookingStatus: b.bookingStatus,
-      operationalStatus: b.operationalStatus || (b.bookingStatus === 'COMPLETED' ? 'COMPLETED' : b.bookingStatus === 'CANCELLED' ? 'CANCELLED' : 'BOOKED'),
-      statusHistory: b.statusHistory || [],
-      assignedStaffName: b.assignedStaffName,
-      assignedStaffDesignation: b.assignedStaffDesignation,
-      assignmentStatus: b.assignmentStatus || 'PENDING',
-      createdAt: b.createdAt,
-      centre: b.centreId || {
-        name: 'Krishi Seva Procurement Centre — Gomti Nagar',
-        address: 'Vibhuti Khand, Gomti Nagar, Lucknow',
-        district: 'Lucknow',
-        contactPhone: '+91 522 2720011'
-      }
-    }));
+    // Enrich active bookings with real queue calculations
+    const bookingIds = bookings.map((b) => b._id || b.id);
+    let queueEntries = [];
+    try {
+      queueEntries = await QueueEntry.find({ bookingId: { $in: bookingIds } }).lean();
+    } catch (qeErr) {
+      queueEntries = [];
+    }
+
+    const formattedBookings = await Promise.all(
+      bookings.map(async (b) => {
+        const bIdStr = (b._id || b.id).toString();
+        let qEntry = queueEntries.find((qe) => qe.bookingId?.toString() === bIdStr);
+        if (!qEntry) {
+          for (const [, qe] of inMemoryQueueEntries) {
+            if (qe.bookingId?.toString() === bIdStr) {
+              qEntry = qe;
+              break;
+            }
+          }
+        }
+
+        const opStatus = b.operationalStatus || (b.bookingStatus === 'COMPLETED' ? 'COMPLETED' : b.bookingStatus === 'CANCELLED' ? 'CANCELLED' : 'BOOKED');
+        const centreId = b.centreId?._id || b.centreId?.id || b.centreId;
+        const queueDate = b.bookingDate;
+
+        let queuePosition = null;
+        let farmersAhead = 0;
+        let estimatedWaitMinutes = 0;
+        let currentlyServingToken = 'LKO-101';
+        let assignedStation = qEntry?.counterId || 'Counter 01';
+
+        if (qEntry) {
+          assignedStation = qEntry.counterId || 'Counter 01';
+
+          if (opStatus === 'WAITING') {
+            try {
+              const earlierWaitingCount = await QueueEntry.countDocuments({
+                centreId,
+                queueDate,
+                state: 'WAITING',
+                sequenceNumber: { $lt: qEntry.sequenceNumber }
+              });
+              queuePosition = earlierWaitingCount + 1;
+              farmersAhead = earlierWaitingCount;
+              estimatedWaitMinutes = Math.max(6, farmersAhead * 6);
+            } catch (cntErr) {
+              farmersAhead = Math.max(0, (qEntry.sequenceNumber || 1) - 1);
+              queuePosition = farmersAhead + 1;
+              estimatedWaitMinutes = Math.max(6, farmersAhead * 6);
+            }
+
+            try {
+              const serving = await QueueEntry.findOne({
+                centreId,
+                queueDate,
+                state: { $in: ['CALLED', 'ARRIVED', 'VERIFICATION', 'QUALITY_CHECK', 'WEIGHING'] }
+              }).sort({ updatedAt: -1 }).lean();
+              if (serving) {
+                currentlyServingToken = serving.tokenNumber;
+              }
+            } catch (srvErr) {
+              // fallback
+            }
+          } else if (opStatus === 'CALLED') {
+            queuePosition = 1;
+            farmersAhead = 0;
+            estimatedWaitMinutes = 0;
+            currentlyServingToken = b.tokenNumber;
+          } else if (['ARRIVED', 'VERIFICATION', 'QUALITY_CHECK', 'WEIGHING'].includes(opStatus)) {
+            queuePosition = 1;
+            farmersAhead = 0;
+            estimatedWaitMinutes = 0;
+            currentlyServingToken = b.tokenNumber;
+          }
+        }
+
+        return {
+          id: bIdStr,
+          bookingReference: b.bookingReference,
+          tokenNumber: b.tokenNumber,
+          bookingDate: b.bookingDate,
+          timeWindow: b.timeWindow,
+          cropType: b.cropType,
+          estimatedQuantityQuintals: b.estimatedQuantityQuintals,
+          bookingStatus: b.bookingStatus,
+          operationalStatus: opStatus,
+          statusHistory: b.statusHistory || [],
+          assignedStaffName: b.assignedStaffName,
+          assignedStaffDesignation: b.assignedStaffDesignation,
+          assignmentStatus: b.assignmentStatus || 'PENDING',
+          createdAt: b.createdAt,
+          queuePosition,
+          farmersAhead,
+          estimatedWaitMinutes,
+          currentlyServingToken,
+          assignedStation,
+          counterId: assignedStation,
+          centre: b.centreId || {
+            name: 'Krishi Seva Procurement Centre — Gomti Nagar',
+            address: 'Vibhuti Khand, Gomti Nagar, Lucknow',
+            district: 'Lucknow',
+            contactPhone: '+91 522 2720011'
+          }
+        };
+      })
+    );
 
     res.status(200).json({
       success: true,
@@ -216,6 +302,15 @@ const getBookingById = async (req, res, next) => {
         return res.status(403).json({
           success: false,
           error: { code: 'FORBIDDEN', message: 'You do not have permission to access this booking.' }
+        });
+      }
+    } else if (req.user.role === 'CENTRE_STAFF') {
+      const staffCentreId = req.user.assignedCentreId ? req.user.assignedCentreId.toString() : '';
+      const bookingCentreId = booking.centreId?._id ? booking.centreId._id.toString() : (booking.centreId ? booking.centreId.toString() : '');
+      if (staffCentreId && bookingCentreId && staffCentreId !== bookingCentreId) {
+        return res.status(403).json({
+          success: false,
+          error: { code: 'FORBIDDEN', message: 'Staff can only view bookings for their assigned procurement centre.' }
         });
       }
     }

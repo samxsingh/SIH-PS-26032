@@ -11,7 +11,10 @@ const {
   getReconciliation,
   provisionStaff,
   reassignCentreHead,
-  getCentreStaffList
+  getCentreStaffList,
+  getDistrictOverview,
+  getAdminMandis,
+  getAdminCentreDetail
 } = require('../controllers/adminController');
 const { validateStaffProvision } = require('../validators/authValidator');
 const { authenticate, authorize } = require('../middleware/authMiddleware');
@@ -20,7 +23,10 @@ const { authenticate, authorize } = require('../middleware/authMiddleware');
 router.use(authenticate, authorize('ADMIN'));
 
 router.get('/overview', getOverview);
+router.get('/district-overview', getDistrictOverview);
+router.get('/mandis', getAdminMandis);
 router.get('/centres', getCentresList);
+router.get('/centres/:centreId/details', getAdminCentreDetail);
 router.get('/centres/:centreId/staff', getCentreStaffList);
 router.patch('/centres/:centreId/reassign-head', reassignCentreHead);
 router.get('/districts', getDistricts);

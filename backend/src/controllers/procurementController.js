@@ -9,13 +9,14 @@ const Booking = require('../models/Booking');
 const handleRecordVerification = async (req, res, next) => {
   try {
     const { bookingId } = req.params;
-    const { verifiedQuantityQuintals, moisturePercentage, qualityGrade, notes } = req.body;
+    const { verifiedQuantityQuintals, moisturePercentage, impurityPercentage, qualityGrade, notes } = req.body;
     const io = req.app.get('io');
 
     const procurement = await recordVerification({
       bookingId,
       verifiedQuantityQuintals,
       moisturePercentage,
+      impurityPercentage,
       qualityGrade,
       staffUser: req.user,
       notes,
@@ -38,12 +39,14 @@ const handleRecordVerification = async (req, res, next) => {
 const handleCompleteProcurement = async (req, res, next) => {
   try {
     const { bookingId } = req.params;
-    const { netWeightQuintals, deductions, notes } = req.body;
+    const { netWeightQuintals, grossWeightQuintals, tareWeightQuintals, deductions, notes } = req.body;
     const io = req.app.get('io');
 
     const result = await completeProcurementTransaction({
       bookingId,
       netWeightQuintals,
+      grossWeightQuintals,
+      tareWeightQuintals,
       deductions,
       staffUser: req.user,
       notes,
@@ -87,6 +90,27 @@ const getProcurementDetails = async (req, res, next) => {
         success: false,
         error: { code: 'NOT_FOUND', message: 'Procurement transaction record not found for this booking.' }
       });
+    }
+
+    // Role-based authorization & ownership check:
+    const userId = req.user.id || req.user._id;
+    if (req.user.role === 'FARMER') {
+      const farmerIdStr = procurement.farmerId?._id ? procurement.farmerId._id.toString() : (procurement.farmerId ? procurement.farmerId.toString() : '');
+      if (farmerIdStr && farmerIdStr !== userId.toString()) {
+        return res.status(403).json({
+          success: false,
+          error: { code: 'FORBIDDEN', message: 'You do not have permission to view this procurement record.' }
+        });
+      }
+    } else if (req.user.role === 'CENTRE_STAFF') {
+      const staffCentreId = req.user.assignedCentreId ? req.user.assignedCentreId.toString() : '';
+      const procCentreId = procurement.centreId?._id ? procurement.centreId._id.toString() : (procurement.centreId ? procurement.centreId.toString() : '');
+      if (staffCentreId && procCentreId && staffCentreId !== procCentreId) {
+        return res.status(403).json({
+          success: false,
+          error: { code: 'FORBIDDEN', message: 'Staff can only view procurements for their assigned procurement centre.' }
+        });
+      }
     }
 
     res.status(200).json({
