@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../../contexts/LanguageContext';
+import LanguageSelector from '../common/LanguageSelector';
 import { Sprout, Globe, ArrowRight } from 'lucide-react';
 
 export const LandingNavbar = () => {
@@ -56,17 +57,10 @@ export const LandingNavbar = () => {
             </button>
           </nav>
 
-          {/* Right Controls: Language Selector + Primary Get Started Action */}
+          {/* Right Controls: Bhashini Multi-Language Selector + Primary Get Started Action */}
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Language Switcher */}
-            <button
-              onClick={toggleLanguage}
-              className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] rounded-xs border-2 border-dark-neutral bg-warm-ivory text-xs sm:text-sm font-black text-dark-neutral shadow-[2px_2px_0px_#22252A] hover:-translate-x-[1px] hover:-translate-y-[1px] hover:shadow-brutal-sm active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all duration-micro ease-tactile focus-visible:ring-2 focus-visible:ring-dark-neutral focus-visible:outline-none"
-              aria-label="Switch Language"
-            >
-              <Globe className="w-4 h-4 text-forest-green" />
-              <span>{language === 'en' ? 'हिंदी' : 'English'}</span>
-            </button>
+            {/* Bhashini Multi-Language Selector */}
+            <LanguageSelector />
 
             {/* Primary GET STARTED Button */}
             <Link to="/access">

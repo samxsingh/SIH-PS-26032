@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MapPin, Navigation, ShieldCheck, AlertCircle, Compass, Search, CheckCircle } from 'lucide-react';
+import { calculateHaversineDistance, getDirectionsUrl } from '../../services/googleMapsService';
 
 export const GoogleMapWrapper = ({
   centres = [],
@@ -176,6 +177,11 @@ export const GoogleMapWrapper = ({
           }
         });
 
+        const distance = centre.distanceKm != null 
+          ? centre.distanceKm 
+          : calculateHaversineDistance(userLocation?.lat, userLocation?.lon, lat, lng);
+        const directionsUrl = getDirectionsUrl(lat, lng, userLocation?.lat, userLocation?.lon);
+
         const infoWindow = new window.google.maps.InfoWindow({
           content: `
             <div style="font-family: sans-serif; padding: 6px; max-width: 240px; color: #22252A;">
@@ -183,7 +189,7 @@ export const GoogleMapWrapper = ({
                 <span style="font-size: 10px; font-weight: 900; text-transform: uppercase; color: ${isVerified ? '#16A34A' : '#D97706'};">
                   ${isVerified ? t('farmer.map_popup_verified') : t('farmer.map_popup_demo')}
                 </span>
-                ${centre.distanceKm !== undefined ? `<span style="font-size: 10px; font-weight: bold; color: #4B5563;">~${centre.distanceKm} km</span>` : ''}
+                ${distance != null ? `<span style="font-size: 10px; font-weight: bold; color: #4B5563;">~${distance} km</span>` : ''}
               </div>
               <h4 style="margin: 2px 0 4px 0; font-size: 13px; font-weight: 800; line-height: 1.2;">${centre.name}</h4>
               <p style="margin: 0 0 6px 0; font-size: 11px; color: #4B5563;">${centre.address}</p>
@@ -194,7 +200,7 @@ export const GoogleMapWrapper = ({
                 <a href="/farmer/book-slot?centreId=${centre.id || centre._id}" style="display: inline-block; background: #1B4D3E; color: white; padding: 4px 8px; font-size: 11px; font-weight: bold; text-decoration: none; border-radius: 3px;">
                   ${t('farmer.book_slot')}
                 </a>
-                <a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}" target="_blank" rel="noopener noreferrer" style="font-size: 11px; font-weight: bold; color: #1B4D3E; text-decoration: underline;">
+                <a href="${directionsUrl}" target="_blank" rel="noopener noreferrer" style="font-size: 11px; font-weight: bold; color: #1B4D3E; text-decoration: underline;">
                   ${t('farmer.map_popup_directions')}
                 </a>
               </div>
@@ -311,13 +317,18 @@ export const GoogleMapWrapper = ({
             marker.on('click', () => {
               if (onSelectCentre) onSelectCentre(centre);
             });
+            const distance = centre.distanceKm != null 
+              ? centre.distanceKm 
+              : calculateHaversineDistance(userLocation?.lat, userLocation?.lon, lat, lon);
+            const directionsUrl = getDirectionsUrl(lat, lon, userLocation?.lat, userLocation?.lon);
+
             marker.bindPopup(`
               <div style="font-family: sans-serif; padding: 6px; max-width: 240px; color: #22252A;">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
                   <span style="font-size: 10px; font-weight: 900; text-transform: uppercase; color: ${isVerified ? '#16A34A' : '#D97706'};">
                     ${isVerified ? t('farmer.map_popup_verified') : t('farmer.map_popup_demo')}
                   </span>
-                  ${centre.distanceKm !== undefined ? `<span style="font-size: 10px; font-weight: bold; color: #4B5563;">~${centre.distanceKm} km</span>` : ''}
+                  ${distance != null ? `<span style="font-size: 10px; font-weight: bold; color: #4B5563;">~${distance} km</span>` : ''}
                 </div>
                 <h4 style="margin: 2px 0 4px 0; font-size: 13px; font-weight: 800; line-height: 1.2;">${centre.name}</h4>
                 <p style="margin: 0 0 6px 0; font-size: 11px; color: #4B5563;">${centre.address}</p>
@@ -328,7 +339,7 @@ export const GoogleMapWrapper = ({
                   <a href="/farmer/book-slot?centreId=${centre.id || centre._id}" style="display: inline-block; background: #1B4D3E; color: white; padding: 4px 8px; font-size: 11px; font-weight: bold; text-decoration: none; border-radius: 3px;">
                     ${t('farmer.book_slot')}
                   </a>
-                  <a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}" target="_blank" rel="noopener noreferrer" style="font-size: 11px; font-weight: bold; color: #1B4D3E; text-decoration: underline;">
+                  <a href="${directionsUrl}" target="_blank" rel="noopener noreferrer" style="font-size: 11px; font-weight: bold; color: #1B4D3E; text-decoration: underline;">
                     ${t('farmer.map_popup_directions')}
                   </a>
                 </div>

@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import Button from './Button';
 import NotificationBell from './NotificationBell';
+import LanguageSelector from './LanguageSelector';
 import {
   Sprout,
   Globe,
@@ -110,15 +111,8 @@ export const Navbar = () => {
             {/* Notification Bell */}
             {isAuthenticated && <NotificationBell />}
 
-            {/* Language Switcher */}
-            <button
-              onClick={toggleLanguage}
-              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xs border-2 border-dark-neutral bg-warm-ivory text-xs font-black text-dark-neutral shadow-[2px_2px_0px_#22252A] hover:-translate-x-[1px] hover:-translate-y-[1px] hover:shadow-brutal-sm active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all duration-micro ease-tactile focus-visible:ring-2 focus-visible:ring-dark-neutral focus-visible:outline-none"
-              aria-label={t('nav.switch_language', 'Switch Language')}
-            >
-              <Globe className="w-3.5 h-3.5 text-forest-green" />
-              <span>{language === 'en' ? 'हिंदी' : 'English'}</span>
-            </button>
+            {/* Bhashini Multi-Language Selector */}
+            <LanguageSelector />
 
             {isAuthenticated ? (
               <div className="flex items-center gap-2">

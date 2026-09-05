@@ -34,6 +34,11 @@ const validateEnv = () => {
     warnings.push('CLIENT_URL not set. Defaulting to http://localhost:5173.');
   }
 
+  // 5. Digital India Bhashini Service
+  if (!process.env.BHASHINI_API_KEY) {
+    warnings.push('BHASHINI_API_KEY not set. Operating with built-in static translations & graceful fallback.');
+  }
+
   // Output warnings if any
   if (warnings.length > 0 && process.env.NODE_ENV !== 'test') {
     warnings.forEach((w) => console.warn(`[Config Notice] ${w}`));
