@@ -5,6 +5,7 @@ import LandingNavbar from '../../components/public/LandingNavbar';
 import LandingFooter from '../../components/public/LandingFooter';
 import WorkflowDiagram from '../../components/public/WorkflowDiagram';
 import AgriculturalNetworkBackground from '../../components/public/AgriculturalNetworkBackground';
+import HeroFloatingSystem from '../../components/public/HeroFloatingSystem';
 import {
   MapPin,
   Calendar,
@@ -126,54 +127,62 @@ export const LandingPage = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-warm-ivory flex flex-col selection:bg-forest-green selection:text-white font-sans">
+    <div className="min-h-screen bg-warm-ivory flex flex-col selection:bg-forest-green selection:text-white font-sans overflow-x-hidden">
       <LandingNavbar />
 
-      <main className="flex-1">
+      <main className="flex-1 overflow-x-hidden">
+        {/* ========================================================= */}
         {/* ========================================================= */}
         {/* 1. HERO SECTION */}
         {/* ========================================================= */}
-        <section className="relative overflow-hidden pt-10 sm:pt-16 pb-12 sm:pb-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
-          {/* Dynamic Agricultural Network & Floating Status Cards */}
+        <section className="relative overflow-hidden pt-8 sm:pt-14 pb-12 sm:pb-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
+          {/* Dynamic Agricultural Network (Layer 1 Dot Matrix + Layer 2 SVG Contours) */}
           <AgriculturalNetworkBackground />
 
-          <div className="relative z-10 text-center max-w-4xl mx-auto space-y-6">
-            {/* Government Badge */}
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xs bg-forest-green-light border-2 border-dark-neutral text-forest-green text-xs sm:text-sm font-black tracking-wide shadow-[2px_2px_0px_#22252A] animate-page-enter">
-              <span>{t('landing.badge')}</span>
-            </div>
+          {/* Dedicated 3-Zone Hero Container with Collision-Safe Bounds */}
+          <div className="relative z-10 w-full">
+            {/* Peripheral Floating Information System (Safe Flanks: Desktop Only, 0 on Tablet/Mobile) */}
+            <HeroFloatingSystem />
 
-            {/* Main Editorial Hero Heading */}
-            <h1 className="font-heading font-black text-4xl sm:text-6xl lg:text-7xl text-dark-neutral tracking-tight leading-[1.08] uppercase animate-page-enter">
-              <span className="block text-forest-green">{t('landing.hero_title_1')}</span>
-              <span className="block">{t('landing.hero_title_2')}</span>
-              <span className="block text-wheat-accent-dark">{t('landing.hero_title_3')}</span>
-            </h1>
+            {/* Central Hero Content Protected Safe Zone (z-20: strictly above ambient floating elements) */}
+            <div className="relative z-20 text-center max-w-2xl lg:max-w-lg xl:max-w-xl 2xl:max-w-2xl mx-auto space-y-6 px-4 lg:px-0">
+              {/* Government Badge */}
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xs bg-forest-green-light border-2 border-dark-neutral text-forest-green text-xs sm:text-sm font-black tracking-wide shadow-[2px_2px_0px_#22252A] animate-page-enter">
+                <span>{t('landing.badge')}</span>
+              </div>
 
-            {/* Supporting Hero Text */}
-            <p className="text-base sm:text-xl text-dark-neutral-muted font-medium max-w-2xl mx-auto leading-relaxed animate-page-enter stagger-1">
-              {t('landing.hero_subtitle')}
-            </p>
+              {/* Main Editorial Hero Heading */}
+              <h1 className="font-heading font-black text-4xl sm:text-6xl lg:text-7xl text-dark-neutral tracking-tight leading-[1.08] uppercase animate-page-enter">
+                <span className="block text-forest-green">{t('landing.hero_title_1')}</span>
+                <span className="block">{t('landing.hero_title_2')}</span>
+                <span className="block text-wheat-accent-dark">{t('landing.hero_title_3')}</span>
+              </h1>
 
-            {/* CTA Action Buttons */}
-            <div className="pt-3 flex flex-col sm:flex-row items-center justify-center gap-3.5 sm:gap-4 animate-page-enter stagger-2">
-              <Link to="/access" className="w-full sm:w-auto">
+              {/* Supporting Hero Text */}
+              <p className="text-base sm:text-xl text-dark-neutral-muted font-medium max-w-2xl mx-auto leading-relaxed animate-page-enter stagger-1">
+                {t('landing.hero_subtitle')}
+              </p>
+
+              {/* CTA Action Buttons */}
+              <div className="pt-3 flex flex-col sm:flex-row items-center justify-center gap-3.5 sm:gap-4 animate-page-enter stagger-2">
+                <Link to="/access" className="w-full sm:w-auto">
+                  <button
+                    type="button"
+                    className="w-full sm:w-auto px-8 py-4 min-h-[52px] rounded-xs bg-forest-green text-white text-base sm:text-lg font-black tracking-wide border-3 border-dark-neutral shadow-brutal hover:-translate-x-[1px] hover:-translate-y-[1px] hover:shadow-brutal-lg active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all duration-micro ease-tactile flex items-center justify-center gap-2 focus-visible:ring-2 focus-visible:ring-dark-neutral focus-visible:outline-none"
+                  >
+                    <span>{t('landing.cta_get_started')}</span>
+                    <ArrowRight className="w-5 h-5" />
+                  </button>
+                </Link>
+
                 <button
                   type="button"
-                  className="w-full sm:w-auto px-8 py-4 min-h-[52px] rounded-xs bg-forest-green text-white text-base sm:text-lg font-black tracking-wide border-3 border-dark-neutral shadow-brutal hover:-translate-x-[1px] hover:-translate-y-[1px] hover:shadow-brutal-lg active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all duration-micro ease-tactile flex items-center justify-center gap-2 focus-visible:ring-2 focus-visible:ring-dark-neutral focus-visible:outline-none"
+                  onClick={() => scrollToSection('how-it-works')}
+                  className="w-full sm:w-auto px-6 py-4 min-h-[52px] rounded-xs bg-white text-dark-neutral text-sm sm:text-base font-black tracking-wide border-3 border-dark-neutral shadow-brutal-sm hover:-translate-x-[1px] hover:-translate-y-[1px] hover:shadow-brutal active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all duration-micro ease-tactile focus-visible:ring-2 focus-visible:ring-dark-neutral focus-visible:outline-none"
                 >
-                  <span>{t('landing.cta_get_started')}</span>
-                  <ArrowRight className="w-5 h-5" />
+                  {t('landing.cta_how_it_works')}
                 </button>
-              </Link>
-
-              <button
-                type="button"
-                onClick={() => scrollToSection('how-it-works')}
-                className="w-full sm:w-auto px-6 py-4 min-h-[52px] rounded-xs bg-white text-dark-neutral text-sm sm:text-base font-black tracking-wide border-3 border-dark-neutral shadow-brutal-sm hover:-translate-x-[1px] hover:-translate-y-[1px] hover:shadow-brutal active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all duration-micro ease-tactile focus-visible:ring-2 focus-visible:ring-dark-neutral focus-visible:outline-none"
-              >
-                {t('landing.cta_how_it_works')}
-              </button>
+              </div>
             </div>
           </div>
 

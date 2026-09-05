@@ -31,8 +31,17 @@
   .duration-page {
     transition-duration: 300ms;
   }
+  .duration-cinematic-exit {
+    transition-duration: 850ms;
+  }
+  .duration-cinematic-enter {
+    transition-duration: 1000ms;
+  }
   .ease-tactile {
     transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .ease-cinematic {
+    transition-timing-function: cubic-bezier(0.22, 0.61, 0.36, 1);
   }
 }
 
@@ -106,95 +115,66 @@
   background: #143B2F;
 }
 
-/* Agricultural Network Background Floating Animations */
-@keyframes agriFloat1 {
-  0% {
-    opacity: 0;
-    transform: translateY(12px) scale(0.97);
-  }
-  15% {
-    opacity: 0.95;
-    transform: translateY(0px) scale(1);
+/* Agricultural Network Ambient Micro-Breathing (Subtle +-2px oscillation) */
+@keyframes agriBreath1 {
+  0%, 100% {
+    transform: translateY(0px);
   }
   50% {
-    opacity: 1;
-    transform: translateY(-8px) scale(1);
-  }
-  85% {
-    opacity: 0.95;
-    transform: translateY(-14px) scale(0.99);
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(-20px) scale(0.97);
+    transform: translateY(-2.5px);
   }
 }
 
-@keyframes agriFloat2 {
-  0% {
-    opacity: 0;
-    transform: translateY(14px) scale(0.97);
+@keyframes agriBreath2 {
+  0%, 100% {
+    transform: translateY(0px);
   }
-  20% {
-    opacity: 0.95;
-    transform: translateY(0px) scale(1);
-  }
-  55% {
-    opacity: 1;
-    transform: translateY(-6px) scale(1);
-  }
-  80% {
-    opacity: 0.9;
-    transform: translateY(-12px) scale(0.99);
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(-18px) scale(0.97);
+  50% {
+    transform: translateY(2.5px);
   }
 }
 
-@keyframes agriFloat3 {
-  0% {
-    opacity: 0;
-    transform: translateY(10px) scale(0.98);
+@keyframes agriBreath3 {
+  0%, 100% {
+    transform: translateY(0px);
   }
-  25% {
-    opacity: 1;
-    transform: translateY(-2px) scale(1);
+  50% {
+    transform: translateY(-2px);
   }
-  60% {
-    opacity: 0.95;
-    transform: translateY(-10px) scale(1);
+}
+
+@keyframes agriBreath4 {
+  0%, 100% {
+    transform: translateY(0px);
   }
-  85% {
-    opacity: 0.85;
-    transform: translateY(-16px) scale(0.99);
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(-22px) scale(0.97);
+  50% {
+    transform: translateY(2px);
   }
 }
 
 @keyframes pulseSlow {
   0%, 100% {
-    opacity: 0.05;
+    opacity: 0.04;
   }
   50% {
-    opacity: 0.12;
+    opacity: 0.10;
   }
 }
 
 .animate-agri-float-1 {
-  animation: agriFloat1 12s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  animation: agriBreath1 9.5s ease-in-out infinite;
 }
 
 .animate-agri-float-2 {
-  animation: agriFloat2 15s cubic-bezier(0.4, 0, 0.2, 1) 3s infinite;
+  animation: agriBreath2 11s ease-in-out 1.5s infinite;
 }
 
 .animate-agri-float-3 {
-  animation: agriFloat3 14s cubic-bezier(0.4, 0, 0.2, 1) 6s infinite;
+  animation: agriBreath3 10s ease-in-out 3s infinite;
+}
+
+.animate-agri-float-4 {
+  animation: agriBreath4 11.5s ease-in-out 2s infinite;
 }
 
 .animate-pulse-slow {
@@ -211,6 +191,14 @@
     transition-delay: 0s !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+    transform: none !important;
+  }
+  .animate-agri-float-1,
+  .animate-agri-float-2,
+  .animate-agri-float-3,
+  .animate-agri-float-4,
+  .animate-pulse-slow {
+    animation: none !important;
     transform: none !important;
   }
 }

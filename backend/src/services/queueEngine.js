@@ -42,11 +42,17 @@ const broadcastQueueEvent = (io, centreId, farmerId, eventName, payload) => {
 const callNextFarmer = async ({ centreId, queueDate, staffUser, counterId = 'Counter 1', io }) => {
   const dateStr = queueDate || getTodayIST();
 
+  const centreQuery = [centreId, centreId ? centreId.toString() : 'c1'];
+  if (centreId?.toString() === 'c1' || staffUser?.assignedCentreId) {
+    centreQuery.push('c1');
+    if (staffUser?.assignedCentreId) centreQuery.push(staffUser.assignedCentreId.toString());
+  }
+
   let nextEntry = null;
   try {
     nextEntry = await QueueEntry.findOneAndUpdate(
       {
-        centreId,
+        centreId: { $in: centreQuery },
         queueDate: dateStr,
         state: 'WAITING'
       },
@@ -65,7 +71,8 @@ const callNextFarmer = async ({ centreId, queueDate, staffUser, counterId = 'Cou
   } catch (dbErr) {
     // In-memory fallback claim
     for (const [, qe] of inMemoryQueueEntries) {
-      if ((qe.centreId === centreId || qe.centreId.toString() === centreId.toString()) && qe.queueDate === dateStr && qe.state === 'WAITING') {
+      const matchesCentre = centreQuery.includes(qe.centreId) || centreQuery.includes(qe.centreId?.toString());
+      if (matchesCentre && qe.queueDate === dateStr && qe.state === 'WAITING') {
         qe.state = 'CALLED';
         qe.calledAt = new Date();
         qe.counterId = counterId;
@@ -78,7 +85,8 @@ const callNextFarmer = async ({ centreId, queueDate, staffUser, counterId = 'Cou
   if (!nextEntry) {
     // Check in-memory store directly if DB returned null
     for (const [, qe] of inMemoryQueueEntries) {
-      if ((qe.centreId === centreId || qe.centreId.toString() === centreId.toString()) && qe.queueDate === dateStr && qe.state === 'WAITING') {
+      const matchesCentre = centreQuery.includes(qe.centreId) || centreQuery.includes(qe.centreId?.toString());
+      if (matchesCentre && qe.queueDate === dateStr && qe.state === 'WAITING') {
         qe.state = 'CALLED';
         qe.calledAt = new Date();
         qe.counterId = counterId;

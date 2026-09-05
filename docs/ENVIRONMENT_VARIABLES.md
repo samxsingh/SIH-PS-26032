@@ -79,7 +79,7 @@ To maintain realistic government procurement workflows without incurring externa
    - Only variables starting with `VITE_` are bundled into client-side code by Vite.
    - **Never** prefix server-side secrets (`JWT_SECRET`, `BHASHINI_API_KEY`, database passwords) with `VITE_`.
 2. **Production Validation**:
-   - The backend includes an automated configuration validator in [`backend/src/config/envValidator.js`](../backend/src/config/envValidator.js).
+   - The backend includes an automated configuration validator in [`backend/src/config/env.js`](../backend/src/config/env.js).
    - In production (`NODE_ENV=production`), the server immediately rejects insecure or default secrets on startup.
 3. **Repository Cleanliness**:
    - All `.env` and `.env.*` files containing actual values are gitignored.

@@ -50,7 +50,10 @@ const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
 
 // Pre-provisioned Government Administrator Credentials
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@agrinexus.gov.in';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'adminpassword';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || process.env.AGRINEXUS_ADMIN_PASSWORD || 'adminpassword';
+
+// Payment Processing Mode ('SIMULATED' | 'DEMO' | 'PRODUCTION')
+const PAYMENT_MODE = process.env.PAYMENT_MODE || 'SIMULATED';
 
 // Google Maps Platform (Backend)
 const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY || '';
@@ -137,6 +140,7 @@ module.exports = {
   JWT_EXPIRES_IN,
   ADMIN_EMAIL,
   ADMIN_PASSWORD,
+  PAYMENT_MODE,
   GOOGLE_MAPS_API_KEY,
   BHASHINI_API_KEY,
   BHASHINI_USER_ID,
