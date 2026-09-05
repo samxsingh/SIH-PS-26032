@@ -241,8 +241,16 @@ export const FarmerDashboardPage = () => {
               }
             >
               <div className="flex items-center gap-4 mb-4 pb-4 border-b-2 border-dark-neutral/10">
-                <div className="w-14 h-14 rounded-xs bg-forest-green-light border-2 border-dark-neutral text-forest-green flex items-center justify-center font-bold text-xl shadow-[2px_2px_0px_#22252A] shrink-0">
-                  <User className="w-7 h-7" />
+                <div className="w-14 h-14 rounded-xs bg-forest-green-light border-2 border-dark-neutral text-forest-green flex items-center justify-center font-bold text-xl shadow-[2px_2px_0px_#22252A] shrink-0 overflow-hidden">
+                  {localStorage.getItem('farmer_avatar_' + (user?.id || user?._id || 'default')) ? (
+                    <img
+                      src={localStorage.getItem('farmer_avatar_' + (user?.id || user?._id || 'default'))}
+                      alt={user?.fullName || 'Farmer'}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <User className="w-7 h-7" />
+                  )}
                 </div>
                 <div className="min-w-0">
                   <h3 className="font-heading font-black text-base text-dark-neutral truncate">

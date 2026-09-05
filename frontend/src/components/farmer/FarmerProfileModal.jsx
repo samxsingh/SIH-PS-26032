@@ -1,19 +1,54 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import Modal from '../common/Modal';
 import Button from '../common/Button';
 import Badge from '../common/Badge';
-import { User, Phone, MapPin, ShieldCheck, Sprout, CheckCircle2, Lock, AlertCircle } from 'lucide-react';
+import {
+  User,
+  Phone,
+  MapPin,
+  ShieldCheck,
+  Sprout,
+  CheckCircle2,
+  Lock,
+  AlertCircle,
+  Camera,
+  Edit2,
+  Check,
+  Upload
+} from 'lucide-react';
 
 /**
  * FarmerProfileModal
  * Displays comprehensive farmer identity, farming details, and administrative location.
- * Protects sensitive registered mobile & verification information.
+ * Allows profile photo upload/change and protects sensitive registered mobile & verification info.
  */
 export const FarmerProfileModal = ({ isOpen, onClose, user }) => {
   const { t } = useTranslation();
+  const fileInputRef = useRef(null);
+
+  // Local state for profile avatar preview
+  const [avatarUrl, setAvatarUrl] = useState(() => {
+    return localStorage.getItem('farmer_avatar_' + (user?.id || user?._id || 'default')) || null;
+  });
+  const [uploadSuccess, setUploadSuccess] = useState(false);
 
   if (!isOpen) return null;
+
+  const handlePhotoUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result;
+        setAvatarUrl(result);
+        localStorage.setItem('farmer_avatar_' + (user?.id || user?._id || 'default'), result);
+        setUploadSuccess(true);
+        setTimeout(() => setUploadSuccess(false), 3000);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   return (
     <Modal
@@ -30,11 +65,36 @@ export const FarmerProfileModal = ({ isOpen, onClose, user }) => {
       }
     >
       <div className="space-y-6 text-dark-neutral font-sans">
-        {/* Top Summary Banner */}
-        <div className="flex items-center gap-4 p-4 bg-warm-ivory border-2 border-dark-neutral rounded-xs shadow-[2px_2px_0px_#22252A]">
-          <div className="w-16 h-16 rounded-xs bg-forest-green-light border-2 border-dark-neutral flex items-center justify-center text-forest-green shadow-[2px_2px_0px_#22252A] shrink-0">
-            <User className="w-8 h-8" />
+        {/* Top Summary Banner with Photo Upload */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 bg-warm-ivory border-2 border-dark-neutral rounded-xs shadow-[2px_2px_0px_#22252A]">
+          <div className="relative group">
+            <div className="w-16 h-16 rounded-xs bg-forest-green-light border-2 border-dark-neutral flex items-center justify-center text-forest-green shadow-[2px_2px_0px_#22252A] shrink-0 overflow-hidden">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt={user?.fullName || 'Farmer'} className="w-full h-full object-cover" />
+              ) : (
+                <User className="w-8 h-8" />
+              )}
+            </div>
+
+            {/* Photo change overlay button */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="absolute -bottom-1.5 -right-1.5 p-1 rounded-xs bg-dark-neutral text-white border border-dark-neutral shadow-[1px_1px_0px_#22252A] hover:bg-forest-green transition-colors"
+              title="Upload profile photo"
+              aria-label="Upload profile photo"
+            >
+              <Camera className="w-3.5 h-3.5" />
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handlePhotoUpload}
+              className="hidden"
+            />
           </div>
+
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap mb-1">
               <h3 className="font-heading font-black text-xl text-dark-neutral truncate">
@@ -47,6 +107,11 @@ export const FarmerProfileModal = ({ isOpen, onClose, user }) => {
             <p className="text-xs text-dark-neutral-muted font-bold flex items-center gap-1">
               <span>Aadhaar-Linked Self-Service Profile</span>
             </p>
+            {uploadSuccess && (
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-forest-green mt-1">
+                <Check className="w-3.5 h-3.5" /> Photo updated successfully
+              </span>
+            )}
           </div>
         </div>
 

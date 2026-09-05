@@ -255,15 +255,6 @@ export const LoginPage = ({ defaultRole }) => {
                 <Globe className="w-4 h-4 text-forest-green" />
                 <span>{language === 'en' ? 'हिंदी' : 'English'}</span>
               </button>
-
-              {/* Back to Access Selection */}
-              <Link
-                to="/auth"
-                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-black text-dark-neutral hover:text-forest-green hover:underline"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                <span>{t('login.back_to_access')}</span>
-              </Link>
             </div>
           </div>
         </div>
