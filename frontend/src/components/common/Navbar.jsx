@@ -33,8 +33,9 @@ export const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleLogout = () => {
+    const roleParam = user?.role ? `?role=${user.role}` : '';
     logout();
-    navigate('/login');
+    navigate(`/login${roleParam}`);
   };
 
   // Define role-specific navigation links
@@ -49,12 +50,12 @@ export const Navbar = () => {
     }
     if (user.role === 'CENTRE_STAFF') {
       return [
-        { label: 'Operations & Queue', to: '/staff' },
+        { label: t('staff.nav_operations', 'Operations & Queue'), to: '/staff' },
       ];
     }
     if (user.role === 'ADMIN') {
       return [
-        { label: 'Command Centre', to: '/admin' },
+        { label: t('admin.nav_command', 'Command Centre'), to: '/admin' },
       ];
     }
     return [];

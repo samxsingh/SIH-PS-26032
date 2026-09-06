@@ -48,6 +48,10 @@ const bookingSchema = new mongoose.Schema(
       min: [1, 'Quantity must be at least 1 quintal'],
       max: [500, 'Quantity cannot exceed 500 quintals per slot']
     },
+    status: {
+      type: String,
+      default: 'CONFIRMED'
+    },
     bookingStatus: {
       type: String,
       enum: ['CONFIRMED', 'CANCELLED', 'COMPLETED'],

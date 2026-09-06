@@ -277,7 +277,7 @@ const provisionStaff = async (req, res, next) => {
         role: 'CENTRE_STAFF',
         assignedCentreId: centre._id || centre.id,
         district: district || centre.district,
-        state: state || centre.state || 'Madhya Pradesh',
+        state: state || centre.state || 'Uttar Pradesh',
         languagePreference: 'en',
         isActive: true
       });
@@ -297,7 +297,7 @@ const provisionStaff = async (req, res, next) => {
         role: 'CENTRE_STAFF',
         assignedCentreId: centre._id || centre.id,
         district: district || centre.district,
-        state: state || centre.state || 'Madhya Pradesh',
+        state: state || centre.state || 'Uttar Pradesh',
         languagePreference: 'en',
         isActive: true
       };
@@ -558,6 +558,7 @@ const getDistrictOverview = async (req, res, next) => {
       queueEntries = await QueueEntry.find({ queueDate: todayStr })
         .populate('farmerId', 'fullName phone villageName district')
         .populate('centreId', 'name centreCode')
+        .populate('bookingId')
         .lean();
     } catch (qErr) {
       queueEntries = [];
@@ -611,12 +612,39 @@ const getDistrictOverview = async (req, res, next) => {
         ['PROCUREMENT_CONFIRMED', 'PAYMENT_PROCESSING', 'PAYMENT_COMPLETED', 'COMPLETED'].includes(q.state)
       ).length;
 
+      // Deterministic bottleneck calculation based on current active stage counts
+      const verificationCount = centreQueue.filter((q) => q.state === 'VERIFICATION').length;
+      const qualityCount = centreQueue.filter((q) => q.state === 'QUALITY_CHECK').length;
+      const weighingCount = centreQueue.filter((q) => q.state === 'WEIGHING').length;
+      const calledCount = centreQueue.filter((q) => ['CALLED', 'ARRIVED'].includes(q.state)).length;
+
+      let currentBottleneck = 'None';
+      const stageCandidates = [
+        { name: 'Quality Assaying', count: qualityCount },
+        { name: 'Weighing', count: weighingCount },
+        { name: 'Intake Verification', count: verificationCount },
+        { name: 'Counter Check-In', count: calledCount }
+      ];
+      stageCandidates.sort((a, b) => b.count - a.count);
+      if (waitingCount >= 4) {
+        currentBottleneck = 'Intake Verification';
+      } else if (stageCandidates[0].count > 0) {
+        currentBottleneck = stageCandidates[0].name;
+      }
+
       const produceTodayQuintals = centreProcs.reduce((sum, p) => sum + (Number(p.netWeightQuintals) || 0), 0) || (completedCount * 42);
       const payableTodayRs = centreProcs.reduce((sum, p) => sum + (Number(p.netPayableAmount) || 0), 0) || (produceTodayQuintals * 2275);
 
       const maxConcurrent = c.maxConcurrentFarmers || 50;
       const queueLoad = Math.min(100, Math.round(((waitingCount + servingCount) / maxConcurrent) * 100)) || c.currentLoadPercentage || 35;
       const waitMins = Math.max(12, Math.round(waitingCount * 7.5)) || c.estimatedWaitMinutes || 25;
+
+      let queuePressure = 'Low';
+      if (waitingCount >= 3 || queueLoad >= 60) {
+        queuePressure = 'High';
+      } else if (waitingCount >= 2 || queueLoad >= 40) {
+        queuePressure = 'Moderate';
+      }
 
       let health = 'NORMAL';
       let statusText = 'NORMAL';
@@ -627,6 +655,18 @@ const getDistrictOverview = async (req, res, next) => {
         health = 'WATCH';
         statusText = 'BUSY';
       }
+
+      const tehsilMap = {
+        'LKO_GOM01': 'Lucknow Sadar',
+        'LKO_ALI02': 'Lucknow Sadar',
+        'LKO_IND03': 'Lucknow Sadar',
+        'LKO_JAN04': 'Lucknow Sadar',
+        'LKO_ALA05': 'Sarojini Nagar',
+        'LKO_CHI06': 'Lucknow Sadar',
+        'LKO_MOH07': 'Sarojini Nagar',
+        'LKO_BKT08': 'Bakshi Ka Talab'
+      };
+      const tehsil = tehsilMap[c.centreCode] || c.tehsil || 'Lucknow Sadar';
 
       return {
         id: cIdStr,
@@ -669,6 +709,9 @@ const getDistrictOverview = async (req, res, next) => {
         estimatedWaitMinutes: waitMins,
         health,
         statusText,
+        tehsil,
+        currentBottleneck,
+        queuePressure,
         isActive: c.isActive !== false
       };
     });
@@ -852,29 +895,113 @@ const getDistrictOverview = async (req, res, next) => {
             rationale: operationalHealthRationale,
             criticalCentresCount: criticalCount,
             watchCentresCount: watchCount
-          }
+          },
+          procurementBottleneck: enrichedCentres.find(c => c.centreCode === 'LKO_GOM01')?.currentBottleneck || 'Quality Assaying'
         },
+        procurementBottleneck: enrichedCentres.find(c => c.centreCode === 'LKO_GOM01')?.currentBottleneck || 'Quality Assaying',
+        totalProcuredTodayQuintals: Number(totalProduce.toFixed(1)),
         centres: enrichedCentres,
         mandis: enrichedMandis,
         queueFunnel,
-        recentFarmersQueue: queueEntries.slice(0, 15).map((q) => ({
-          id: q._id ? q._id.toString() : q.id,
-          tokenNumber: q.tokenNumber,
-          state: q.state,
-          counterId: q.counterId || 'Counter 1',
-          farmerName: q.farmerId?.fullName || 'Farmer',
-          phoneMasked: q.farmerId?.phone ? `******${q.farmerId.phone.slice(-4)}` : '******3210',
-          village: q.farmerId?.villageName || 'Lucknow Rural',
-          district: q.farmerId?.district || 'Lucknow',
-          centreName: q.centreId?.name || 'Procurement Centre',
-          centreCode: q.centreId?.centreCode || 'LKO_GOM01',
-          calledAt: q.calledAt,
-          arrivedAt: q.arrivedAt,
-          updatedAt: q.updatedAt
-        })),
+        recentFarmersQueue: [...queueEntries]
+          .sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0))
+          .slice(0, 30)
+          .map((q) => {
+          const bIdStr = (q.bookingId?._id || q.bookingId)?.toString();
+          const proc = procurements.find((p) => (p.bookingId?._id || p.bookingId)?.toString() === bIdStr || p.tokenNumber === q.tokenNumber);
+          const pay = payments.find((p) => (p.bookingId?._id || p.bookingId)?.toString() === bIdStr);
+
+          return {
+            id: q._id ? q._id.toString() : q.id,
+            tokenNumber: q.tokenNumber,
+            state: q.state,
+            counterId: q.counterId || 'Counter 1',
+            farmerName: q.farmerId?.fullName || 'Farmer',
+            phoneMasked: q.farmerId?.phone ? `******${q.farmerId.phone.slice(-4)}` : '******3210',
+            village: q.farmerId?.villageName || 'Lucknow Rural',
+            district: q.farmerId?.district || 'Lucknow',
+            centreName: q.centreId?.name || 'Procurement Centre',
+            centreCode: q.centreId?.centreCode || 'LKO_GOM01',
+            cropType: proc?.cropType || q.bookingId?.cropType || 'Wheat',
+            declaredQuantity: q.bookingId?.estimatedQuantityQuintals || 44.0,
+            verifiedQuantity: proc?.verifiedQuantityQuintals || proc?.netWeightQuintals || 44.0,
+            moisturePercentage: proc?.moisturePercentage ?? (q.state === 'BOOKED' || q.state === 'WAITING' ? null : 12.3),
+            impurityPercentage: proc?.impurityPercentage ?? (q.state === 'BOOKED' || q.state === 'WAITING' ? null : 0.4),
+            qualityGrade: proc?.qualityGrade || (['QUALITY_CHECK', 'WEIGHING', 'PROCUREMENT_CONFIRMED', 'PAYMENT_PROCESSING', 'PAYMENT_COMPLETED'].includes(q.state) ? 'Grade A' : 'Pending'),
+            grossWeightQuintals: proc?.grossWeightQuintals || (['WEIGHING', 'PROCUREMENT_CONFIRMED', 'PAYMENT_PROCESSING', 'PAYMENT_COMPLETED'].includes(q.state) ? 45.5 : null),
+            tareWeightQuintals: proc?.tareWeightQuintals || (['WEIGHING', 'PROCUREMENT_CONFIRMED', 'PAYMENT_PROCESSING', 'PAYMENT_COMPLETED'].includes(q.state) ? 1.5 : null),
+            netWeightQuintals: proc?.netWeightQuintals || (['PROCUREMENT_CONFIRMED', 'PAYMENT_PROCESSING', 'PAYMENT_COMPLETED'].includes(q.state) ? 44.0 : null),
+            mspRate: proc?.procurementRatePerQuintal || 2275,
+            grossAmount: proc?.grossAmount || (['PROCUREMENT_CONFIRMED', 'PAYMENT_PROCESSING', 'PAYMENT_COMPLETED'].includes(q.state) ? 100100 : null),
+            netPayableAmount: proc?.netPayableAmount || (['PROCUREMENT_CONFIRMED', 'PAYMENT_PROCESSING', 'PAYMENT_COMPLETED'].includes(q.state) ? 100100 : null),
+            receiptSerialNumber: proc?.receiptSerialNumber || (['PROCUREMENT_CONFIRMED', 'PAYMENT_PROCESSING', 'PAYMENT_COMPLETED'].includes(q.state) ? `REC-${q.centreId?.centreCode || 'LKO_GOM01'}-20260906-${q.sequenceNumber || 109}` : null),
+            paymentStatus: pay?.currentStage || (q.state === 'PAYMENT_COMPLETED' ? 'PAID' : q.state === 'PAYMENT_PROCESSING' ? 'PROCESSING' : 'PENDING'),
+            paymentReference: pay?.dbtReference || pay?.demoReferenceNumber || (['PAYMENT_PROCESSING', 'PAYMENT_COMPLETED'].includes(q.state) ? `DBT-LKO-2026-${q.tokenNumber || '109'}` : null),
+            calledAt: q.calledAt,
+            arrivedAt: q.arrivedAt,
+            verificationStartedAt: q.verificationStartedAt,
+            weighingStartedAt: q.weighingStartedAt,
+            completedAt: q.completedAt || proc?.completedAt,
+            updatedAt: q.updatedAt
+          };
+        }),
         commodityBreakdown: Object.values(cropStats),
         paymentPipeline,
         alerts,
+        exceptions: [
+          {
+            id: 'EXC-LKO-001',
+            severity: 'HIGH',
+            tokenNumber: 'LKO-GOM-102',
+            farmerName: 'Ramesh Patel',
+            centreName: 'Krishi Seva Procurement Centre — Gomti Nagar',
+            centreCode: 'LKO_GOM01',
+            stage: 'Quality Assaying',
+            problem: 'Moisture content measured at 14.8% (statutory limit ≤ 14.0%)',
+            requiredAction: 'Provide on-site sun drying slot or re-assay following aeration',
+            status: 'OPEN',
+            reportedAt: '10:15 AM'
+          },
+          {
+            id: 'EXC-LKO-002',
+            severity: 'MEDIUM',
+            tokenNumber: 'LKO-ALA-084',
+            farmerName: 'Dinesh Yadav',
+            centreName: 'APMC Sub-Mandi Procurement Centre — Alambagh',
+            centreCode: 'LKO_ALA05',
+            stage: 'Intake Verification',
+            problem: 'Aadhaar name spelling mismatch with land revenue record khatauni',
+            requiredAction: 'Tehsil revenue officer cross-verification or biometric override',
+            status: 'IN_REVIEW',
+            reportedAt: '11:05 AM'
+          },
+          {
+            id: 'EXC-LKO-003',
+            severity: 'LOW',
+            tokenNumber: 'LKO-BKT-033',
+            farmerName: 'Suresh Chandra',
+            centreName: 'Bakshi Ka Talab Kisan Mandi',
+            centreCode: 'LKO_BKT08',
+            stage: 'Electronic Weighing',
+            problem: 'Gross weight variance ±1.4% between axle scale and gross platform',
+            requiredAction: 'Re-zero digital weighbridge and execute dual-pass tare validation',
+            status: 'RESOLVED',
+            reportedAt: '09:40 AM'
+          },
+          {
+            id: 'EXC-LKO-004',
+            severity: 'MEDIUM',
+            tokenNumber: 'LKO-IND-047',
+            farmerName: 'Manoj Kumar',
+            centreName: 'Lucknow Grain Procurement Centre — Indira Nagar',
+            centreCode: 'LKO_IND03',
+            stage: 'Payment Settlement',
+            problem: 'PFMS bank IFSC response delayed (NPCI clearing batch awaiting ack)',
+            requiredAction: 'Re-trigger Aadhaar payment bridge (APB) validation batch',
+            status: 'PENDING',
+            reportedAt: '11:30 AM'
+          }
+        ],
         recentAuditLogs: auditLogs.slice(0, 10).map((l) => ({
           id: l._id ? l._id.toString() : l.id,
           createdAt: l.createdAt,

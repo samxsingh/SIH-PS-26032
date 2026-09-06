@@ -254,7 +254,7 @@ const DEMO_USERS_CANONICAL = [
   // --- GOVERNMENT ADMINISTRATOR ---
   {
     id: 'user_admin_01',
-    fullName: 'District Magistrate / Administrator',
+    fullName: 'Dr. Anand Verma (District Magistrate / Administrator)',
     phone: '9876543212',
     email: 'admin@agrinexus.gov.in',
     role: 'ADMIN',

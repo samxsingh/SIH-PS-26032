@@ -15,6 +15,7 @@ import LoadingState from '../../components/common/LoadingState';
 import ErrorState from '../../components/common/ErrorState';
 import EmptyState from '../../components/common/EmptyState';
 import DigitalReceiptModal from '../../components/farmer/DigitalReceiptModal';
+import AgriculturalVisualBackground from '../../components/public/AgriculturalVisualBackground';
 import {
   CheckCircle2,
   Clock,
@@ -64,7 +65,7 @@ export const FarmerProcurementPage = () => {
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [liveNotification, setLiveNotification] = useState(null);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (isInitial = false) => {
     if (!bookingId) {
       setErrorType('NOT_FOUND');
       setErrorMsg(t('farmer.booking_not_found_desc', 'The requested procurement booking could not be found or you do not have permission to view it.'));
@@ -72,9 +73,11 @@ export const FarmerProcurementPage = () => {
       return;
     }
 
-    setIsLoading(true);
-    setErrorType(null);
-    setErrorMsg(null);
+    if (isInitial) {
+      setIsLoading(true);
+      setErrorType(null);
+      setErrorMsg(null);
+    }
 
     let isBookingFound = false;
     let foundBooking = null;
@@ -139,15 +142,25 @@ export const FarmerProcurementPage = () => {
         setErrorMsg(t('farmer.booking_not_found_desc', 'The requested procurement booking could not be found or you do not have permission to view it.'));
       }
     } catch (err) {
-      setErrorType('ERROR');
-      setErrorMsg(err.message || t('farmer.journey_error_desc', 'We encountered a temporary network issue while fetching your procurement journey details. Please try again.'));
+      if (isInitial) {
+        setErrorType('ERROR');
+        setErrorMsg(err.message || t('farmer.journey_error_desc', 'We encountered a temporary network issue while fetching your procurement journey details. Please try again.'));
+      }
     } finally {
-      setIsLoading(false);
+      if (isInitial) {
+        setIsLoading(false);
+      }
     }
   }, [bookingId, t]);
 
   useEffect(() => {
-    fetchData();
+    fetchData(true);
+    const pollTimer = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchData(false);
+      }
+    }, 3500);
+    return () => clearInterval(pollTimer);
   }, [fetchData]);
 
   // Socket.IO real-time hook
@@ -251,10 +264,13 @@ export const FarmerProcurementPage = () => {
   const netPayable = Number(procurement?.netPayableAmount || (grossAmount - deductions));
 
   return (
-    <div className="min-h-screen bg-warm-ivory flex flex-col selection:bg-forest-green selection:text-white font-sans">
+    <div className="min-h-screen bg-warm-ivory flex flex-col selection:bg-forest-green selection:text-white font-sans relative overflow-x-hidden">
+      {/* Contextual Visual Background - JOURNEY mode */}
+      <AgriculturalVisualBackground variant="journey" intensity="soft" showBotanicalFrame={true} />
+
       <Navbar />
 
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 animate-page-enter">
+      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 animate-page-enter relative z-10">
         {/* Top Back Navigation Bar */}
         <div className="mb-4">
           <button
@@ -273,10 +289,22 @@ export const FarmerProcurementPage = () => {
           badge={
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-forest-green-light text-forest-green border border-forest-green rounded-xs text-[11px] font-black uppercase shadow-[1px_1px_0px_#22252A]">
               <span className="w-2 h-2 rounded-full bg-forest-green animate-pulse" />
-              <span>Lucknow District Operations</span>
+              <span>DEMO ENVIRONMENT • Lucknow District</span>
             </span>
           }
         />
+
+        {/* Subtle Demo Environment Simulation Indicators */}
+        <div className="mb-4 px-3.5 py-2 bg-amber-50 border-2 border-amber-400 rounded-xs flex flex-wrap items-center justify-between gap-2 text-[11px] font-bold text-amber-950 shadow-[2px_2px_0px_#22252A]">
+          <span className="flex items-center gap-1.5">
+            <span>🛡️ Demonstration Mode • Authorized Lucknow District Sandbox</span>
+          </span>
+          <div className="flex items-center gap-2 flex-wrap text-[10px]">
+            <span className="px-2 py-0.5 bg-white border border-amber-400 rounded-xs font-mono">PFMS Simulation: Active</span>
+            <span className="px-2 py-0.5 bg-white border border-amber-400 rounded-xs font-mono">SMS Gateway: Simulated</span>
+            <span className="px-2 py-0.5 bg-white border border-amber-400 rounded-xs font-mono">Digital Weighbridge: Synchronized</span>
+          </div>
+        </div>
 
         {liveNotification && (
           <div className="mb-4 p-3 bg-emerald-100 border-2 border-forest-green text-emerald-900 rounded-xs text-xs font-bold flex items-center gap-2 shadow-brutal-sm animate-fade-in">
@@ -306,8 +334,11 @@ export const FarmerProcurementPage = () => {
             {/* Booking Reference & Assigned Staff Overview Strip */}
             <div className="bg-white border-2 border-dark-neutral p-4 rounded-xs shadow-brutal flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-xs bg-forest-green border-2 border-dark-neutral flex items-center justify-center text-white font-mono font-black text-base shadow-[2px_2px_0px_#22252A]">
-                  #{booking?.tokenNumber || procurement?.tokenNumber || 'TOK-01'}
+                <div className="px-3.5 py-2 rounded-xs bg-forest-green-light border-2 border-dark-neutral flex flex-col items-center justify-center text-forest-green shadow-[2px_2px_0px_#22252A]">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-dark-neutral-muted">TOKEN</span>
+                  <span className="font-mono font-black text-xl sm:text-2xl text-forest-green leading-none mt-0.5">
+                    {booking?.tokenNumber || procurement?.tokenNumber || 'GOM01-109'}
+                  </span>
                 </div>
                 <div>
                   <span className="text-[10px] font-black uppercase text-dark-neutral-muted tracking-wider block">

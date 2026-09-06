@@ -58,7 +58,7 @@ const runTests = async () => {
       headers: { 'Content-Type': 'application/json' }
     }, {
       role: 'CENTRE_STAFF',
-      email: 'sehore.centre@agrinexus.demo',
+      email: 'gomtinagar.centre@agrinexus.demo',
       password: 'password123'
     });
 

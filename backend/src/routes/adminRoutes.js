@@ -24,6 +24,8 @@ router.use(authenticate, authorize('ADMIN'));
 
 router.get('/overview', getOverview);
 router.get('/district-overview', getDistrictOverview);
+router.get('/dashboard-stats', getDistrictOverview);
+router.get('/stats', getDistrictOverview);
 router.get('/mandis', getAdminMandis);
 router.get('/centres', getCentresList);
 router.get('/centres/:centreId/details', getAdminCentreDetail);

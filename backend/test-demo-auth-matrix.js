@@ -90,7 +90,7 @@ async function runDemoAuthMatrix() {
   console.log('\n--- 2. PROCUREMENT CENTRE DEMO ACCOUNTS ---');
   const centres = [
     { name: 'Gomti Nagar Centre', email: 'gomtinagar.centre@agrinexus.demo', password: 'password123' },
-    { name: 'Sehore Mandi Centre', email: 'sehore.centre@agrinexus.demo', password: 'password123' },
+    { name: 'Jankipuram Kisan Centre', email: 'jankipuram.centre@agrinexus.demo', password: 'password123' },
     { name: 'Aliganj Kisan Centre', email: 'aliganj.centre@agrinexus.demo', password: 'password123' },
     { name: 'Indira Nagar Centre', email: 'indiranagar.centre@agrinexus.demo', password: 'password123' },
     { name: 'Alambagh APMC Centre', email: 'alambagh.centre@agrinexus.demo', password: 'password123' }

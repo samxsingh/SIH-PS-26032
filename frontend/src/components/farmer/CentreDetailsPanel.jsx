@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -21,6 +21,7 @@ import {
 import Button from '../common/Button';
 import Badge from '../common/Badge';
 import { getDirectionsUrl } from '../../services/googleMapsService';
+import { getLocalizedCrop } from '../../utils/formatters';
 
 /**
  * CentreDetailsPanel
@@ -41,20 +42,35 @@ export const CentreDetailsPanel = ({
   onSelectCentre = null
 }) => {
   const { t } = useTranslation();
+  const closeButtonRef = useRef(null);
+  const previousActiveElementRef = useRef(null);
 
-  // Handle ESC key to dismiss drawer
+  // Handle focus management and ESC key to dismiss drawer
   useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
-      }
-    };
     if (isOpen) {
+      previousActiveElementRef.current = document.activeElement;
+      // Focus close button on open for accessibility
+      const timer = setTimeout(() => {
+        if (closeButtonRef.current) {
+          closeButtonRef.current.focus();
+        }
+      }, 50);
+
+      const handleKeyDown = (e) => {
+        if (e.key === 'Escape') {
+          onClose();
+        }
+      };
+
       window.addEventListener('keydown', handleKeyDown);
+      return () => {
+        clearTimeout(timer);
+        window.removeEventListener('keydown', handleKeyDown);
+        if (previousActiveElementRef.current && typeof previousActiveElementRef.current.focus === 'function') {
+          previousActiveElementRef.current.focus();
+        }
+      };
     }
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
   }, [isOpen, onClose]);
 
   // Determine active entity and type
@@ -80,11 +96,14 @@ export const CentreDetailsPanel = ({
 
     // Find affiliated centres governed by this mandi
     const affiliatedCentres = centres.filter((c) => {
-      const cMandiId = c.mandiId?._id || c.mandiId?.id || c.mandiId;
+      const cMandiId = c.mandiId?._id || c.mandiId?.id || (typeof c.mandiId === 'string' ? c.mandiId : null);
       const mId = mandi._id || mandi.id;
+      const cMandiCode = c.mandiCode || c.mandiId?.mandiCode;
+      const cMandiName = c.mandiName || c.mandiId?.name;
+
       return (cMandiId && mId && cMandiId.toString() === mId.toString()) ||
-        (c.mandiCode && mandi.mandiCode && c.mandiCode === mandi.mandiCode) ||
-        (c.mandiName && mandi.name && c.mandiName.toLowerCase() === mandi.name.toLowerCase());
+        (cMandiCode && mandi.mandiCode && cMandiCode.toLowerCase() === mandi.mandiCode.toLowerCase()) ||
+        (cMandiName && mandi.name && cMandiName.toLowerCase() === mandi.name.toLowerCase());
     });
 
     const mandiDrawerContent = (
@@ -122,6 +141,7 @@ export const CentreDetailsPanel = ({
               </span>
             </div>
             <button
+              ref={closeButtonRef}
               onClick={onClose}
               className="p-1.5 rounded-xs bg-warm-ivory border-2 border-dark-neutral hover:bg-forest-green hover:text-white shadow-[2px_2px_0px_#22252A] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-colors"
               aria-label={t('common.close_drawer', 'Close details drawer')}
@@ -183,7 +203,7 @@ export const CentreDetailsPanel = ({
                     key={crop}
                     className="bg-wheat-accent/40 text-dark-neutral border border-dark-neutral font-bold text-xs px-2.5 py-1 rounded-xs flex items-center gap-1"
                   >
-                    <span>🌾</span> {crop}
+                    <span>🌾</span> {getLocalizedCrop(crop, t)}
                   </span>
                 ))}
               </div>
@@ -301,17 +321,18 @@ export const CentreDetailsPanel = ({
               {isVerified ? t('farmer.map_popup_verified', 'Verified Hub') : t('farmer.map_popup_demo', 'Demonstration')}
             </Badge>
             <span className="font-mono text-[11px] font-black bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded-xs border border-emerald-300">
-              {centre.centreCode || 'LKO_CENTRE'}
+              {centreItem.centreCode || 'LKO_CENTRE'}
             </span>
           </div>
           <h2 className="text-lg sm:text-xl font-heading font-black text-dark-neutral leading-tight">
-            {centre.name}
+            {centreItem.name}
           </h2>
         </div>
         <button
+          ref={closeButtonRef}
           onClick={onClose}
           className="p-1.5 rounded-xs bg-warm-ivory border-2 border-dark-neutral hover:bg-forest-green hover:text-white shadow-[2px_2px_0px_#22252A] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-colors"
-          aria-label="Close drawer"
+          aria-label={t('common.close_drawer', 'Close details drawer')}
         >
           <X className="w-5 h-5" />
         </button>
@@ -335,7 +356,7 @@ export const CentreDetailsPanel = ({
                   {mandiCode}
                 </span>
                 <span className="text-[11px] text-dark-neutral font-medium">
-                  {centre.district || 'Lucknow'}, {centre.state || 'UP'}
+                  {centreItem.district || 'Lucknow'}, {centreItem.state || 'UP'}
                 </span>
               </div>
             </div>
@@ -367,7 +388,7 @@ export const CentreDetailsPanel = ({
             </div>
             <div className="p-2.5 bg-warm-ivory rounded-xs border border-dark-neutral/20">
               <span className="text-[10px] text-dark-neutral-muted font-bold block uppercase">Today Done</span>
-              <span className="font-heading font-black text-base sm:text-lg text-emerald-800">{centre.completedTodayCount !== undefined ? centre.completedTodayCount : 18}</span>
+              <span className="font-heading font-black text-base sm:text-lg text-emerald-800">{centreItem.completedTodayCount !== undefined ? centreItem.completedTodayCount : 18}</span>
               <span className="text-[9px] text-dark-neutral-muted font-semibold block">procured</span>
             </div>
           </div>
@@ -388,7 +409,7 @@ export const CentreDetailsPanel = ({
                 <div>
                   <span className="text-[10px] text-dark-neutral-muted font-black uppercase block">Appointed Centre Manager</span>
                   <span className="font-black text-dark-neutral text-xs">
-                    {centre.centreHead?.fullName || centre.managerName || 'Satish Kumar (Station Head)'}
+                    {centreItem.centreHead?.fullName || centreItem.managerName || 'Satish Kumar (Station Head)'}
                   </span>
                 </div>
                 <span className="text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-400 px-1.5 py-0.2 rounded-xs">
@@ -400,7 +421,7 @@ export const CentreDetailsPanel = ({
             <div className="flex items-start gap-2">
               <MapPin className="w-4 h-4 text-dark-neutral-muted shrink-0 mt-0.5" />
               <div>
-                <span className="font-bold text-dark-neutral block">{centre.address || 'Lucknow, Uttar Pradesh'}</span>
+                <span className="font-bold text-dark-neutral block">{centreItem.address || 'Lucknow, Uttar Pradesh'}</span>
                 <span className="text-[11px] text-dark-neutral-muted">
                   ~{distanceKm} km {t('farmer.from_your_location', 'from your location')}
                 </span>
@@ -414,11 +435,11 @@ export const CentreDetailsPanel = ({
               </span>
             </div>
 
-            {centre.contactPhone && (
+            {centreItem.contactPhone && (
               <div className="flex items-center gap-2">
                 <Phone className="w-4 h-4 text-dark-neutral-muted shrink-0" />
-                <a href={`tel:${centre.contactPhone}`} className="font-mono font-bold text-forest-green hover:underline">
-                  {centre.contactPhone}
+                <a href={`tel:${centreItem.contactPhone}`} className="font-mono font-bold text-forest-green hover:underline">
+                  {centreItem.contactPhone}
                 </a>
               </div>
             )}
@@ -433,15 +454,15 @@ export const CentreDetailsPanel = ({
           </h3>
 
           <div className="flex flex-wrap gap-1.5">
-            {(centre.crops && centre.crops.length > 0
-              ? centre.crops
+            {(centreItem.crops && centreItem.crops.length > 0
+              ? centreItem.crops
               : ['Wheat', 'Paddy', 'Mustard', 'Maize']
             ).map((crop) => (
               <span
                 key={crop}
                 className="bg-wheat-accent/40 text-dark-neutral border border-dark-neutral font-bold text-xs px-2.5 py-1 rounded-xs flex items-center gap-1"
               >
-                <span>🌾</span> {crop}
+                <span>🌾</span> {getLocalizedCrop(crop, t)}
               </span>
             ))}
           </div>
@@ -450,14 +471,14 @@ export const CentreDetailsPanel = ({
 
       {/* Drawer Footer Actions */}
       <div className="p-4 sm:p-5 bg-white border-t-2 border-dark-neutral space-y-2.5">
-        {activeBooking && (activeBooking.centre?._id === centre._id || activeBooking.centre?.id === centre.id || activeBooking.centreId === centre._id || activeBooking.centreId === centre.id) ? (
+        {activeBooking && (activeBooking.centre?._id === centreItem._id || activeBooking.centre?.id === centreItem.id || activeBooking.centreId === centreItem._id || activeBooking.centreId === centreItem.id) ? (
           <div className="p-3 bg-forest-green-light border-2 border-forest-green rounded-xs shadow-[2px_2px_0px_#22252A] space-y-2">
             <div className="flex items-center gap-1.5 text-xs font-black text-forest-green">
               <ShieldCheck className="w-4 h-4 text-forest-green" />
               <span>{t('farmer.active_booking_here', 'Active Booking at this Facility')}</span>
             </div>
             <p className="text-[11px] text-dark-neutral font-medium">
-              Token: <strong className="font-mono font-bold text-forest-green">{activeBooking.tokenNumber}</strong> • {activeBooking.cropType} ({activeBooking.estimatedQuantityQuintals || activeBooking.quantityQuintals} Qtl)
+              Token: <strong className="font-mono font-bold text-forest-green">{activeBooking.tokenNumber}</strong> • {getLocalizedCrop(activeBooking.cropType || 'Wheat', t)} ({activeBooking.estimatedQuantityQuintals || activeBooking.quantityQuintals} {t('common.quintals', 'Qtl')})
             </p>
             <a
               href={`/farmer/procurement/${activeBooking._id || activeBooking.id}`}
@@ -472,7 +493,7 @@ export const CentreDetailsPanel = ({
             variant="primary"
             size="lg"
             className="w-full shadow-brutal justify-center font-black"
-            onClick={() => onBookSlot(centre)}
+            onClick={() => onBookSlot(centreItem)}
           >
             <span>🌾 {t('farmer.book_slot', 'Book Delivery Slot')}</span>
             <ArrowRight className="w-4 h-4 ml-1.5" />

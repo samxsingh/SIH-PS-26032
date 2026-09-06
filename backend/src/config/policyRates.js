@@ -1,7 +1,7 @@
 /**
  * Centralized Government Minimum Support Price (MSP) Policy Rate Configuration
  * Department of Consumer Affairs / Ministry of Agriculture & Farmers Welfare
- * Season: KMS / RMS 2026-27 (Madhya Pradesh & Central Pool)
+ * Season: KMS / RMS 2026-27 (Uttar Pradesh & Central Pool)
  */
 
 const MSP_POLICY_RATES = {

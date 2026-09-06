@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import Badge from '../common/Badge';
 import Button from '../common/Button';
+import { getLocalizedStage, getLocalizedCrop } from '../../utils/formatters';
 
 export const LiveQueueBoard = ({
   queue = [],
@@ -81,8 +82,51 @@ export const LiveQueueBoard = ({
     }
   };
 
+  // Stage counts for operational metrics bar
+  const waitingCount = queue.filter((q) => q.state === 'WAITING').length;
+  const calledCount = queue.filter((q) => q.state === 'CALLED').length;
+  const verificationCount = queue.filter((q) => q.state === 'VERIFICATION').length;
+  const qualityCount = queue.filter((q) => q.state === 'QUALITY_CHECK').length;
+  const weighingCount = queue.filter((q) => q.state === 'WEIGHING').length;
+  const settlementCount = queue.filter((q) => ['PROCUREMENT_CONFIRMED', 'PAYMENT_PROCESSING'].includes(q.state)).length;
+  const completedCount = queue.filter((q) => ['PAYMENT_COMPLETED', 'COMPLETED'].includes(q.state)).length;
+
+  const nextWaitingEntry = queue.find((q) => q.state === 'WAITING');
+
   return (
     <div className="space-y-6">
+      {/* 7-Stage Clean Operational Metrics Strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 bg-white border-2 border-dark-neutral p-3 rounded-xs shadow-[2px_2px_0px_#22252A]">
+        <div className="p-2 bg-amber-50 border border-dark-neutral/30 text-center rounded-xs">
+          <span className="text-[10px] font-bold uppercase text-amber-900 block">{t('staff.metric_waiting', 'Waiting')}</span>
+          <span className="text-lg font-black font-mono text-amber-800">{waitingCount}</span>
+        </div>
+        <div className="p-2 bg-blue-50 border border-dark-neutral/30 text-center rounded-xs">
+          <span className="text-[10px] font-bold uppercase text-blue-900 block">{t('staff.metric_called', 'Called')}</span>
+          <span className="text-lg font-black font-mono text-blue-800">{calledCount}</span>
+        </div>
+        <div className="p-2 bg-indigo-50 border border-dark-neutral/30 text-center rounded-xs">
+          <span className="text-[10px] font-bold uppercase text-indigo-900 block">{t('staff.metric_verification', 'Verification')}</span>
+          <span className="text-lg font-black font-mono text-indigo-800">{verificationCount}</span>
+        </div>
+        <div className="p-2 bg-amber-100/60 border border-dark-neutral/30 text-center rounded-xs">
+          <span className="text-[10px] font-bold uppercase text-amber-950 block">{t('staff.metric_quality', 'Quality Check')}</span>
+          <span className="text-lg font-black font-mono text-amber-900">{qualityCount}</span>
+        </div>
+        <div className="p-2 bg-purple-50 border border-dark-neutral/30 text-center rounded-xs">
+          <span className="text-[10px] font-bold uppercase text-purple-900 block">{t('staff.metric_weighing', 'Weighing')}</span>
+          <span className="text-lg font-black font-mono text-purple-800">{weighingCount}</span>
+        </div>
+        <div className="p-2 bg-teal-50 border border-dark-neutral/30 text-center rounded-xs">
+          <span className="text-[10px] font-bold uppercase text-teal-900 block">{t('staff.metric_settlement', 'Settlement')}</span>
+          <span className="text-lg font-black font-mono text-teal-800">{settlementCount}</span>
+        </div>
+        <div className="p-2 bg-emerald-50 border border-dark-neutral/30 text-center rounded-xs">
+          <span className="text-[10px] font-bold uppercase text-emerald-900 block">{t('staff.metric_completed', 'Completed Today')}</span>
+          <span className="text-lg font-black font-mono text-emerald-800">{completedCount}</span>
+        </div>
+      </div>
+
       {/* Top Bar: Call Next Control & Active Serving Banner */}
       <div className="bg-white border-3 border-dark-neutral p-5 rounded-md shadow-brutal-md">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b-2 border-dark-neutral/10">
@@ -117,7 +161,6 @@ export const LiveQueueBoard = ({
 
             {/* Prominent CALL NEXT Button */}
             {(() => {
-              const waitingCount = queue.filter((q) => q.state === 'WAITING').length;
               const isCallDisabled = isCallingNext || waitingCount === 0;
 
               return (
@@ -142,65 +185,104 @@ export const LiveQueueBoard = ({
           </div>
         </div>
 
-        {/* Hero Card: Currently Serving Farmer */}
-        {activeServingEntry ? (
-          <div className="mt-4 p-4 bg-forest-green-light/40 border-2 border-forest-green rounded-xs shadow-brutal-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[10px] font-black uppercase tracking-wider bg-forest-green text-white px-2 py-0.5 rounded-xs">
-                  {t('staff.now_serving', 'NOW SERVING')}
-                </span>
-                <span className="text-xs font-bold text-dark-neutral-muted">•</span>
-                <span className="text-xs font-black text-forest-green">{activeServingEntry.counterId || counterId}</span>
+        {/* Visual Hierarchy: NOW SERVING & NEXT Up */}
+        <div className="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* NOW SERVING */}
+          <div className="lg:col-span-2">
+            {activeServingEntry ? (
+              <div className="p-4 bg-forest-green-light/40 border-2 border-forest-green rounded-xs shadow-brutal-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 h-full">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] font-black uppercase tracking-wider bg-forest-green text-white px-2 py-0.5 rounded-xs">
+                      {t('staff.now_serving', 'NOW SERVING')}
+                    </span>
+                    <span className="text-xs font-bold text-dark-neutral-muted">•</span>
+                    <span className="text-xs font-black text-forest-green">{activeServingEntry.counterId || counterId}</span>
+                  </div>
+
+                  <div className="flex items-baseline gap-3">
+                    <span className="text-2xl font-black font-mono text-dark-neutral">
+                      {activeServingEntry.tokenNumber}
+                    </span>
+                    <span className="text-lg font-bold text-dark-neutral">
+                      {activeServingEntry.farmer?.fullName || activeServingEntry.farmerName || 'Farmer'}
+                    </span>
+                  </div>
+
+                  <div className="text-xs text-dark-neutral-muted flex items-center gap-3">
+                    <span>{activeServingEntry.cropType || activeServingEntry.commodity || 'Wheat'} • <strong>{activeServingEntry.quantityQuintals || activeServingEntry.declaredQuantity || 42} Qtl</strong></span>
+                    <span>•</span>
+                    <span>{t('staff.stage', 'Current Stage')}: <strong className="text-forest-green uppercase">{getLocalizedStage(activeServingEntry.state, t)}</strong></span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  {getNextActionForState(activeServingEntry.state) && (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => onAdvanceState && onAdvanceState(activeServingEntry._id || activeServingEntry.id, getNextActionForState(activeServingEntry.state).nextState)}
+                      className="text-xs font-black bg-forest-green hover:bg-forest-green-dark"
+                    >
+                      {getNextActionForState(activeServingEntry.state).label}
+                    </Button>
+                  )}
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onOpenWorkspace && onOpenWorkspace(activeServingEntry)}
+                    className="text-xs font-bold"
+                  >
+                    <Eye className="w-3.5 h-3.5 mr-1.5" />
+                    {t('staff.open_workspace', 'Procurement Workspace')}
+                  </Button>
+                </div>
               </div>
-
-              <div className="flex items-baseline gap-3">
-                <span className="text-2xl font-black font-mono text-dark-neutral">
-                  {activeServingEntry.tokenNumber}
-                </span>
-                <span className="text-lg font-bold text-dark-neutral">
-                  {activeServingEntry.farmer?.fullName || activeServingEntry.farmerName || 'Farmer'}
+            ) : (
+              <div className="p-4 bg-sand/30 border border-dark-neutral/20 rounded-xs flex items-center justify-between text-xs text-dark-neutral-muted h-full">
+                <span className="flex items-center gap-1.5">
+                  <Clock className="w-4 h-4 text-forest-green" />
+                  {t('staff.station_idle', 'No active farmer currently at this counter station. Press CALL NEXT to claim the next waiting token.')}
                 </span>
               </div>
-
-              <div className="text-xs text-dark-neutral-muted flex items-center gap-3">
-                <span>{activeServingEntry.cropType || activeServingEntry.commodity || 'Wheat'} • <strong>{activeServingEntry.quantityQuintals || activeServingEntry.declaredQuantity || 42} Qtl</strong></span>
-                <span>•</span>
-                <span>{t('staff.stage', 'Current Stage')}: <strong className="text-forest-green uppercase">{activeServingEntry.state}</strong></span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 flex-wrap">
-              {getNextActionForState(activeServingEntry.state) && (
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => onAdvanceState && onAdvanceState(activeServingEntry.id, getNextActionForState(activeServingEntry.state).nextState)}
-                  className="text-xs font-black bg-forest-green hover:bg-forest-green-dark"
-                >
-                  {getNextActionForState(activeServingEntry.state).label}
-                </Button>
-              )}
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onOpenWorkspace && onOpenWorkspace(activeServingEntry)}
-                className="text-xs font-bold"
-              >
-                <Eye className="w-3.5 h-3.5 mr-1.5" />
-                {t('staff.open_workspace', 'Procurement Workspace')}
-              </Button>
-            </div>
+            )}
           </div>
-        ) : (
-          <div className="mt-4 p-3 bg-sand/30 border border-dark-neutral/20 rounded-xs flex items-center justify-between text-xs text-dark-neutral-muted">
-            <span className="flex items-center gap-1.5">
-              <Clock className="w-4 h-4 text-forest-green" />
-              {t('staff.station_idle', 'No active farmer currently at this counter station. Press CALL NEXT to claim the next waiting token.')}
+
+          {/* NEXT IN LINE PREVIEW */}
+          <div className="p-3.5 bg-amber-50/70 border-2 border-amber-400 rounded-xs shadow-[2px_2px_0px_#22252A] flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-950 bg-amber-200 px-2 py-0.5 border border-amber-500 rounded-xs">
+                  {t('staff.next_in_line', 'NEXT')}
+                </span>
+                <span className="text-[10px] font-bold text-amber-900 font-mono">
+                  {waitingCount} {t('staff.waiting_count_label', 'waiting')}
+                </span>
+              </div>
+              {nextWaitingEntry ? (
+                <div>
+                  <span className="text-xl font-black font-mono text-amber-950 block">
+                    {nextWaitingEntry.tokenNumber}
+                  </span>
+                  <strong className="text-xs text-dark-neutral block">
+                    {nextWaitingEntry.farmer?.fullName || nextWaitingEntry.farmerName || 'Next Farmer'}
+                  </strong>
+                  <span className="text-[11px] text-dark-neutral-muted">
+                    {nextWaitingEntry.cropType || 'Wheat'} • {nextWaitingEntry.quantityQuintals || 40} Qtl
+                  </span>
+                </div>
+              ) : (
+                <p className="text-xs text-amber-900 font-medium mt-1">
+                  Queue cleared. No further tokens currently waiting.
+                </p>
+              )}
+            </div>
+            <span className="text-[10px] text-dark-neutral-muted block pt-2 border-t border-amber-200">
+              Auto-promotes when current token is processed.
             </span>
           </div>
-        )}
+        </div>
       </div>
 
       {/* Live Queue Filter Tabs & List Table */}
@@ -213,7 +295,7 @@ export const LiveQueueBoard = ({
                 key={f}
                 type="button"
                 onClick={() => setFilter(f)}
-                className={`text-xs font-bold px-3 py-1.5 rounded-xs border-2 transition-all ${
+                className={`text-xs font-bold px-3 py-1.5 rounded-xs border-2 transition-all cursor-pointer ${
                   filter === f
                     ? 'bg-forest-green text-white border-dark-neutral shadow-[2px_2px_0px_#22252A]'
                     : 'bg-white text-dark-neutral border-dark-neutral/40 hover:border-dark-neutral'
@@ -234,9 +316,10 @@ export const LiveQueueBoard = ({
           <div className="divide-y-2 divide-dark-neutral/10">
             {filteredQueue.map((entry) => {
               const isServing = ['CALLED', 'ARRIVED', 'VERIFICATION', 'QUALITY_CHECK', 'WEIGHING'].includes(entry.state);
+              const rowKey = entry._id || entry.id || entry.tokenNumber;
               return (
                 <div
-                  key={entry.id}
+                  key={rowKey}
                   onClick={() => onSelectFarmer && onSelectFarmer(entry)}
                   className={`p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-forest-green-light/20 transition-colors cursor-pointer ${
                     isServing ? 'bg-amber-50/30' : ''
@@ -260,9 +343,9 @@ export const LiveQueueBoard = ({
                       <div className="text-xs text-dark-neutral-muted flex items-center gap-2 flex-wrap mt-0.5">
                         <span>{entry.timeWindow || '09:00 - 10:00 AM'}</span>
                         <span>•</span>
-                        <span>{entry.cropType || 'Wheat'} ({entry.quantityQuintals || 42} Qtl)</span>
+                        <span>{getLocalizedCrop(entry.cropType || 'Wheat', t)} ({entry.quantityQuintals || 42} {t('common.quintals', 'Qtl')})</span>
                         <span>•</span>
-                        <span>Station: <strong className="text-dark-neutral font-bold">{entry.counterId || 'Bay 01'}</strong></span>
+                        <span>{t('staff.counter', 'Station')}: <strong className="text-dark-neutral font-bold">{entry.counterId || 'Bay 01'}</strong></span>
                         {entry.farmer?.villageName && (
                           <>
                             <span>•</span>
@@ -300,7 +383,7 @@ export const LiveQueueBoard = ({
                     })()}
 
                     <Badge variant={getStageBadgeVariant(entry.state)} size="sm">
-                      {entry.state}
+                      {getLocalizedStage(entry.state, t)}
                     </Badge>
 
                     <Button

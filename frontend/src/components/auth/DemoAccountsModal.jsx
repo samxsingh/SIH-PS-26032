@@ -147,11 +147,11 @@ export const DemoAccountsModal = ({ isOpen, onClose, role, onSelectAccount, acti
                       {/* Name & Badge */}
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="text-sm font-black text-dark-neutral tracking-tight">
-                          {acc.name}
+                          {t(`login.demo_account_name_${acc.id}`, acc.name)}
                         </h3>
-                        {acc.badge && (
+                        {(!acc.hideIdentifier && (acc.roleTitle || acc.badge)) && (
                           <span className="text-[10px] font-bold px-1.5 py-0.5 border border-dark-neutral bg-sand-muted text-dark-neutral">
-                            {acc.badge}
+                            {t(`login.demo_account_role_${acc.id}`, acc.roleTitle || acc.badge)}
                           </span>
                         )}
                         {acc.code && (
@@ -161,6 +161,13 @@ export const DemoAccountsModal = ({ isOpen, onClose, role, onSelectAccount, acti
                         )}
                       </div>
 
+                      {/* Description / Role purpose */}
+                      {acc.description && (
+                        <p className="text-xs text-dark-neutral font-semibold">
+                          {t(`login.demo_account_desc_${acc.id}`, acc.description)}
+                        </p>
+                      )}
+
                       {/* Location / District */}
                       <div className="flex items-center gap-1.5 text-xs text-dark-neutral-muted font-medium">
                         <MapPin className="w-3.5 h-3.5 shrink-0 text-dark-neutral/60" />
@@ -169,18 +176,26 @@ export const DemoAccountsModal = ({ isOpen, onClose, role, onSelectAccount, acti
 
                       {/* Identifier & Context Tag */}
                       <div className="flex items-center gap-3 text-xs pt-0.5 flex-wrap">
-                        <span className="inline-flex items-center gap-1 font-mono font-bold text-dark-neutral bg-sand-light px-2 py-0.5 border border-dark-neutral/30">
-                          {acc.identifierType === 'phone' ? (
-                            <Phone className="w-3 h-3 text-forest-green" />
-                          ) : (
-                            <Mail className="w-3 h-3 text-blue-600" />
-                          )}
-                          {acc.identifier}
-                        </span>
+                        {!acc.hideIdentifier && (
+                          <span className="inline-flex items-center gap-1 font-mono font-bold text-dark-neutral bg-sand-light px-2 py-0.5 border border-dark-neutral/30">
+                            {acc.identifierType === 'phone' ? (
+                              <Phone className="w-3 h-3 text-forest-green" />
+                            ) : (
+                              <Mail className="w-3 h-3 text-blue-600" />
+                            )}
+                            {acc.identifier}
+                          </span>
+                        )}
 
                         {acc.crops && (
                           <span className="text-emerald-800 text-[11px] font-semibold">
                             🌾 {acc.crops}
+                          </span>
+                        )}
+
+                        {acc.centreName && (
+                          <span className="text-blue-900 text-[11px] font-semibold truncate">
+                            🏢 {acc.centreName}
                           </span>
                         )}
 
@@ -196,6 +211,7 @@ export const DemoAccountsModal = ({ isOpen, onClose, role, onSelectAccount, acti
                     <div className="sm:self-center shrink-0 pt-2 sm:pt-0">
                       <button
                         type="button"
+                        data-account-id={acc.id}
                         onClick={() => {
                           onSelectAccount(acc);
                           onClose();

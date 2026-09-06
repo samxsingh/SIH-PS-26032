@@ -32,18 +32,18 @@ const procurementCentreSchema = new mongoose.Schema(
     state: {
       type: String,
       required: [true, 'State is required'],
-      default: 'Madhya Pradesh',
+      default: 'Uttar Pradesh',
       trim: true
     },
     stateCode: {
       type: String,
       trim: true,
-      default: 'MP'
+      default: 'UP'
     },
     districtCode: {
       type: String,
       trim: true,
-      default: 'MP_SEH'
+      default: 'UP_LUK'
     },
     localityCode: {
       type: String,

@@ -59,6 +59,11 @@ export const CentrePerformanceTable = ({ centres = [], onSelectCentre }) => {
                   Centre Facility <ArrowUpDown className="w-3 h-3 text-dark-neutral-muted" />
                 </div>
               </th>
+              <th className="p-2.5 cursor-pointer hover:bg-gray-200" onClick={() => handleSort('tehsil')}>
+                <div className="flex items-center gap-1">
+                  Area / Tehsil <ArrowUpDown className="w-3 h-3 text-dark-neutral-muted" />
+                </div>
+              </th>
               <th className="p-2.5 cursor-pointer hover:bg-gray-200" onClick={() => handleSort('mandi')}>
                 <div className="flex items-center gap-1">
                   Parent Mandi <ArrowUpDown className="w-3 h-3 text-dark-neutral-muted" />
@@ -66,30 +71,28 @@ export const CentrePerformanceTable = ({ centres = [], onSelectCentre }) => {
               </th>
               <th className="p-2.5 text-center cursor-pointer hover:bg-gray-200" onClick={() => handleSort('waitingCount')}>
                 <div className="flex items-center justify-center gap-1">
-                  Waiting <ArrowUpDown className="w-3 h-3 text-dark-neutral-muted" />
+                  Queue Depth <ArrowUpDown className="w-3 h-3 text-dark-neutral-muted" />
                 </div>
               </th>
-              <th className="p-2.5 text-center cursor-pointer hover:bg-gray-200" onClick={() => handleSort('estimatedWaitMinutes')}>
+              <th className="p-2.5 text-center cursor-pointer hover:bg-gray-200" onClick={() => handleSort('servingCount')}>
                 <div className="flex items-center justify-center gap-1">
-                  Avg Turnaround <ArrowUpDown className="w-3 h-3 text-dark-neutral-muted" />
+                  Processing <ArrowUpDown className="w-3 h-3 text-dark-neutral-muted" />
                 </div>
               </th>
               <th className="p-2.5 text-center cursor-pointer hover:bg-gray-200" onClick={() => handleSort('completedCount')}>
                 <div className="flex items-center justify-center gap-1">
-                  Completed <ArrowUpDown className="w-3 h-3 text-dark-neutral-muted" />
+                  Completed Today <ArrowUpDown className="w-3 h-3 text-dark-neutral-muted" />
                 </div>
+              </th>
+              <th className="p-2.5 text-center">
+                Current Bottleneck
               </th>
               <th className="p-2.5 text-right cursor-pointer hover:bg-gray-200" onClick={() => handleSort('produceTodayQuintals')}>
                 <div className="flex items-center justify-end gap-1">
                   Produce (Qtl) <ArrowUpDown className="w-3 h-3 text-dark-neutral-muted" />
                 </div>
               </th>
-              <th className="p-2.5 text-right cursor-pointer hover:bg-gray-200" onClick={() => handleSort('payableTodayRs')}>
-                <div className="flex items-center justify-end gap-1">
-                  Payable (₹) <ArrowUpDown className="w-3 h-3 text-dark-neutral-muted" />
-                </div>
-              </th>
-              <th className="p-2.5 text-center">Operational Status</th>
+              <th className="p-2.5 text-center">Status</th>
               <th className="p-2.5 text-right">Action</th>
             </tr>
           </thead>
@@ -100,23 +103,34 @@ export const CentrePerformanceTable = ({ centres = [], onSelectCentre }) => {
                   <span className="font-mono font-black text-forest-green text-[10px] block">{c.centreCode}</span>
                   <strong className="text-dark-neutral block font-bold">{c.name}</strong>
                 </td>
+                <td className="p-2.5 font-bold text-dark-neutral">
+                  {c.tehsil || 'Lucknow Sadar'}
+                </td>
                 <td className="p-2.5 text-dark-neutral-muted">
                   {c.mandi?.name || 'Dubagga Mandi'}
                 </td>
                 <td className="p-2.5 text-center font-mono font-bold text-amber-900">
-                  {c.waitingCount || 0}
+                  <span className="px-2 py-0.5 bg-amber-100 border border-amber-300 rounded-xs">
+                    {c.waitingCount || 0} waiting
+                  </span>
                 </td>
-                <td className="p-2.5 text-center font-mono font-bold text-dark-neutral">
-                  ~{c.estimatedWaitMinutes || 18} min
+                <td className="p-2.5 text-center font-mono font-bold text-blue-800">
+                  {c.servingCount || 0} active
                 </td>
                 <td className="p-2.5 text-center font-mono font-bold text-emerald-800">
-                  {c.completedCount || 0}
+                  {c.completedCount || 0} done
+                </td>
+                <td className="p-2.5 text-center">
+                  <span className={`px-2 py-0.5 text-[10px] font-bold border rounded-xs ${
+                    c.currentBottleneck && c.currentBottleneck !== 'None'
+                      ? 'bg-amber-100 text-amber-900 border-amber-400'
+                      : 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                  }`}>
+                    {c.currentBottleneck || 'Optimal Flow'}
+                  </span>
                 </td>
                 <td className="p-2.5 text-right font-mono font-black text-forest-green">
-                  {c.produceTodayQuintals || 0}
-                </td>
-                <td className="p-2.5 text-right font-mono font-black text-dark-neutral">
-                  ₹{(c.payableTodayRs || 0).toLocaleString('en-IN')}
+                  {c.produceTodayQuintals || 0} Qtl
                 </td>
                 <td className="p-2.5 text-center">
                   <Badge variant={c.health === 'CRITICAL' ? 'danger' : c.health === 'WATCH' ? 'warning' : 'success'} className="text-[10px] font-bold">
@@ -126,7 +140,7 @@ export const CentrePerformanceTable = ({ centres = [], onSelectCentre }) => {
                 <td className="p-2.5 text-right">
                   <button
                     onClick={() => onSelectCentre(c)}
-                    className="px-2.5 py-1 text-[11px] font-bold text-forest-green bg-forest-green-light border border-dark-neutral rounded-xs hover:bg-forest-green hover:text-white transition-all shadow-[1px_1px_0px_#22252A] inline-flex items-center gap-1"
+                    className="px-2.5 py-1 text-[11px] font-bold text-forest-green bg-forest-green-light border border-dark-neutral rounded-xs hover:bg-forest-green hover:text-white transition-all shadow-[1px_1px_0px_#22252A] inline-flex items-center gap-1 cursor-pointer"
                   >
                     <Eye className="w-3 h-3" />
                     Inspect

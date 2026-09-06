@@ -67,52 +67,22 @@ export const DistrictStatusRibbon = ({ districtData = {}, queueFunnel = {} }) =>
 
       {/* 6 Key Operational Status Indicators */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3">
-        {/* 1. Procurement Centres */}
+        {/* 1. Procurement Centres Operational */}
         <div className="bg-warm-ivory p-2.5 rounded-xs border-2 border-dark-neutral shadow-[2px_2px_0px_#22252A] flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xs bg-forest-green/10 border border-dark-neutral flex items-center justify-center text-forest-green flex-shrink-0">
             <Building2 className="w-4 h-4" />
           </div>
           <div className="min-w-0">
             <span className="text-[10px] font-bold uppercase text-dark-neutral-muted block truncate">
-              {t('admin.centres', 'Centres')}
+              {t('admin.centres_operational', 'Centres Operational')}
             </span>
             <span className="text-base sm:text-lg font-black text-dark-neutral font-mono block leading-none mt-0.5">
-              {totalCentres}
+              {totalCentres}/{totalCentres}
             </span>
           </div>
         </div>
 
-        {/* 2. Regulated Mandis */}
-        <div className="bg-warm-ivory p-2.5 rounded-xs border-2 border-dark-neutral shadow-[2px_2px_0px_#22252A] flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xs bg-purple-100 border border-dark-neutral flex items-center justify-center text-purple-700 flex-shrink-0">
-            <Store className="w-4 h-4" />
-          </div>
-          <div className="min-w-0">
-            <span className="text-[10px] font-bold uppercase text-dark-neutral-muted block truncate">
-              {t('admin.mandis', 'Regulated Mandis')}
-            </span>
-            <span className="text-base sm:text-lg font-black text-dark-neutral font-mono block leading-none mt-0.5">
-              {totalMandis}
-            </span>
-          </div>
-        </div>
-
-        {/* 3. Adjacent Operational Areas */}
-        <div className="bg-warm-ivory p-2.5 rounded-xs border-2 border-dark-neutral shadow-[2px_2px_0px_#22252A] flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xs bg-blue-100 border border-dark-neutral flex items-center justify-center text-blue-700 flex-shrink-0">
-            <Map className="w-4 h-4" />
-          </div>
-          <div className="min-w-0">
-            <span className="text-[10px] font-bold uppercase text-dark-neutral-muted block truncate">
-              {t('admin.adjacent_zones', 'Adjacent Zones')}
-            </span>
-            <span className="text-base sm:text-lg font-black text-dark-neutral font-mono block leading-none mt-0.5">
-              {adjacentZones}
-            </span>
-          </div>
-        </div>
-
-        {/* 4. Active Farmers */}
+        {/* 2. Active Farmers */}
         <div className="bg-warm-ivory p-2.5 rounded-xs border-2 border-dark-neutral shadow-[2px_2px_0px_#22252A] flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xs bg-emerald-100 border border-dark-neutral flex items-center justify-center text-emerald-800 flex-shrink-0">
             <Users className="w-4 h-4" />
@@ -127,14 +97,14 @@ export const DistrictStatusRibbon = ({ districtData = {}, queueFunnel = {} }) =>
           </div>
         </div>
 
-        {/* 5. Waiting in Queue */}
+        {/* 3. Waiting in Queue */}
         <div className="bg-amber-50 p-2.5 rounded-xs border-2 border-dark-neutral shadow-[2px_2px_0px_#22252A] flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xs bg-amber-200 border border-dark-neutral flex items-center justify-center text-amber-900 flex-shrink-0">
             <Clock className="w-4 h-4" />
           </div>
           <div className="min-w-0">
             <span className="text-[10px] font-bold uppercase text-amber-900 block truncate">
-              {t('admin.waiting', 'Waiting in Line')}
+              {t('admin.waiting', 'Waiting')}
             </span>
             <span className="text-base sm:text-lg font-black text-amber-800 font-mono block leading-none mt-0.5">
               {waitingFarmers}
@@ -142,17 +112,47 @@ export const DistrictStatusRibbon = ({ districtData = {}, queueFunnel = {} }) =>
           </div>
         </div>
 
-        {/* 6. Currently Processing */}
+        {/* 4. Currently In Process */}
         <div className="bg-blue-50 p-2.5 rounded-xs border-2 border-dark-neutral shadow-[2px_2px_0px_#22252A] flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xs bg-blue-200 border border-dark-neutral flex items-center justify-center text-blue-900 flex-shrink-0">
             <Loader2 className="w-4 h-4 animate-spin text-blue-800" />
           </div>
           <div className="min-w-0">
             <span className="text-[10px] font-bold uppercase text-blue-900 block truncate">
-              {t('admin.processing', 'In Processing')}
+              {t('admin.in_process', 'In Process')}
             </span>
             <span className="text-base sm:text-lg font-black text-blue-800 font-mono block leading-none mt-0.5">
               {processingFarmers}
+            </span>
+          </div>
+        </div>
+
+        {/* 5. Completed Today */}
+        <div className="bg-emerald-50 p-2.5 rounded-xs border-2 border-dark-neutral shadow-[2px_2px_0px_#22252A] flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xs bg-emerald-200 border border-dark-neutral flex items-center justify-center text-emerald-900 flex-shrink-0">
+            <TrendingUp className="w-4 h-4 text-emerald-900" />
+          </div>
+          <div className="min-w-0">
+            <span className="text-[10px] font-bold uppercase text-emerald-900 block truncate">
+              {t('admin.completed_today', 'Completed Today')}
+            </span>
+            <span className="text-base sm:text-lg font-black text-emerald-900 font-mono block leading-none mt-0.5">
+              {districtData.completedToday ?? (queueFunnel.PROCUREMENT_CONFIRMED || 0) + (queueFunnel.PAYMENT_PROCESSING || 0) + (queueFunnel.PAYMENT_COMPLETED || 0)}
+            </span>
+          </div>
+        </div>
+
+        {/* 6. Payment Processing */}
+        <div className="bg-purple-50 p-2.5 rounded-xs border-2 border-dark-neutral shadow-[2px_2px_0px_#22252A] flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xs bg-purple-200 border border-dark-neutral flex items-center justify-center text-purple-900 flex-shrink-0">
+            <IndianRupee className="w-4 h-4 text-purple-900" />
+          </div>
+          <div className="min-w-0">
+            <span className="text-[10px] font-bold uppercase text-purple-900 block truncate">
+              {t('admin.payment_processing', 'Payment Pipeline')}
+            </span>
+            <span className="text-base sm:text-lg font-black text-purple-900 font-mono block leading-none mt-0.5">
+              {(queueFunnel.PAYMENT_PROCESSING || 0) + (queueFunnel.PAYMENT_COMPLETED || 0)}
             </span>
           </div>
         </div>

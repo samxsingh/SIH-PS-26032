@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import Button from '../common/Button';
 import Badge from '../common/Badge';
+import { getLocalizedCrop } from '../../utils/formatters';
 
 export const FarmerDetailDrawer = ({
   farmerEntry,
@@ -44,11 +45,12 @@ export const FarmerDetailDrawer = ({
   const currentIndex = STAGES.findIndex((s) => s.key === currentState);
   const safeIndex = currentIndex === -1 ? 0 : currentIndex;
 
-  const farmerName = farmerEntry.farmer?.fullName || farmerEntry.farmerName || 'Ramesh Patel';
-  const phone = farmerEntry.farmer?.phone || farmerEntry.phone || '+91 98765 43210';
-  const village = farmerEntry.farmer?.villageName || farmerEntry.villageName || 'Chinhat';
+  const isCanon = farmerEntry.tokenNumber === 'GOM01-109';
+  const farmerName = farmerEntry.farmer?.fullName || farmerEntry.farmerName || (isCanon ? 'Ramesh Patel' : 'Farmer');
+  const phone = farmerEntry.farmer?.phone || farmerEntry.phone || (isCanon ? '9876543210' : '+91 98765 43210');
+  const village = farmerEntry.farmer?.villageName || farmerEntry.village || farmerEntry.villageName || (isCanon ? 'Chinhat' : 'Lucknow');
   const crop = farmerEntry.cropType || farmerEntry.commodity || 'Wheat';
-  const qty = farmerEntry.quantityQuintals || farmerEntry.estimatedQuantityQuintals || 42;
+  const qty = Number(farmerEntry.netWeightQuintals || farmerEntry.quantityQuintals || farmerEntry.estimatedQuantityQuintals || (isCanon ? 44.0 : 40));
 
   return (
     <div
@@ -116,9 +118,9 @@ export const FarmerDetailDrawer = ({
             </div>
 
             <div className="p-2.5 bg-sand/30 rounded-xs border border-dark-neutral/30">
-              <span className="text-dark-neutral-muted block text-[10px] font-bold uppercase">Commodity</span>
+              <span className="text-dark-neutral-muted block text-[10px] font-bold uppercase">{t('farmer.produce_label', 'Commodity')}</span>
               <span className="font-bold text-dark-neutral mt-0.5 block">
-                {crop} • {qty} Qtl
+                {getLocalizedCrop(crop, t)} • {qty} {t('common.quintals', 'Qtl')}
               </span>
             </div>
 

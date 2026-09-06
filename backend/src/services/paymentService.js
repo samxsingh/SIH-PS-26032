@@ -72,8 +72,11 @@ const updatePaymentStage = async ({ bookingId, procurementId, farmerId, newStage
   const currentIdx = getStageIndex(paymentDoc.currentStage);
   const newIdx = getStageIndex(newStage);
 
-  // Terminal state: PAID is immutable
+  // Terminal state: PAID is immutable (idempotent if already PAID)
   if (paymentDoc.currentStage === 'PAID') {
+    if (newStage === 'PAID') {
+      return paymentDoc;
+    }
     throw new Error('Cannot update payment stage: Payment has already reached terminal status PAID.');
   }
 

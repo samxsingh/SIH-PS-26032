@@ -49,6 +49,18 @@ const procurementSchema = new mongoose.Schema(
       max: [100, 'Moisture percentage cannot exceed 100%'],
       default: 12.0
     },
+    impurityPercentage: {
+      type: Number,
+      default: 0.4
+    },
+    grossWeightQuintals: {
+      type: Number,
+      default: 0
+    },
+    tareWeightQuintals: {
+      type: Number,
+      default: 0
+    },
     qualityGrade: {
       type: String,
       enum: ['Grade A', 'Grade B', 'Rejected', 'Pending'],
@@ -91,7 +103,7 @@ const procurementSchema = new mongoose.Schema(
       sparse: true
     },
     processedByStaffId: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.Mixed,
       ref: 'User'
     },
     notes: {

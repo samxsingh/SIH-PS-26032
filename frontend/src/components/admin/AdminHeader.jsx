@@ -5,13 +5,17 @@ import LanguageSelector from '../common/LanguageSelector';
 import Badge from '../common/Badge';
 import Button from '../common/Button';
 
+import { useAuth } from '../../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
+
 export const AdminHeader = ({ onRefresh, isRefreshing, alertsCount = 0, onToggleAlerts }) => {
   const { t } = useTranslation();
+  const { logout } = useAuth();
+  const navigate = useNavigate();
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    window.location.href = '/staff/login';
+    logout();
+    navigate('/login?role=ADMIN');
   };
 
   return (

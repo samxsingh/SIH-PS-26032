@@ -57,6 +57,7 @@ export const LanguageSelector = ({ compact = false }) => {
               return (
                 <button
                   key={lang.code}
+                  data-lang={lang.code}
                   type="button"
                   onClick={() => {
                     changeLanguage(lang.code);

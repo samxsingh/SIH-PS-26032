@@ -14,6 +14,7 @@ import LoadingState from '../../components/common/LoadingState';
 import EmptyState from '../../components/common/EmptyState';
 import Alert from '../../components/common/Alert';
 import ProgressLadder from '../../components/common/ProgressLadder';
+import AgriculturalVisualBackground from '../../components/public/AgriculturalVisualBackground';
 import {
   Ticket,
   Calendar,
@@ -123,10 +124,13 @@ export const MyBookingsPage = () => {
   const currentList = activeTab === 'UPCOMING' ? upcomingBookings : pastBookings;
 
   return (
-    <div className="min-h-screen bg-warm-ivory flex flex-col selection:bg-forest-green selection:text-white">
+    <div className="min-h-screen bg-warm-ivory flex flex-col selection:bg-forest-green selection:text-white relative overflow-x-hidden">
+      {/* Contextual Visual Background - FARM mode (subtle) */}
+      <AgriculturalVisualBackground variant="farm" position="left" intensity="subtle" showBotanicalFrame={true} />
+
       <Navbar />
 
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 animate-page-enter">
+      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 animate-page-enter relative z-10">
         <PageHeader
           title={t('farmer.action_my_booking')}
           subtitle={t('farmer.my_bookings_subtitle')}

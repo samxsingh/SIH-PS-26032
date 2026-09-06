@@ -6,6 +6,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import apiClient from '../../services/apiClient';
 import Button from '../../components/common/Button';
 import Alert from '../../components/common/Alert';
+import AgriculturalVisualBackground from '../../components/public/AgriculturalVisualBackground';
 import {
   Sprout,
   ShieldCheck,
@@ -209,9 +210,12 @@ export const LoginPage = ({ defaultRole }) => {
   };
 
   return (
-    <div className="min-h-screen bg-warm-ivory flex flex-col selection:bg-forest-green selection:text-white font-sans">
+    <div className="min-h-screen bg-warm-ivory flex flex-col selection:bg-forest-green selection:text-white font-sans relative overflow-x-hidden">
+      {/* Contextual Visual Background - NEUTRAL mode (clean ivory base, dot grid, subtle contours, zero heavy photography) */}
+      <AgriculturalVisualBackground variant="neutral" showContours={true} showBotanicalFrame={true} />
+
       {/* Clean Header */}
-      <header className="bg-white border-b-2 border-dark-neutral sticky top-0 z-40">
+      <header className="bg-white/95 backdrop-blur-sm border-b-2 border-dark-neutral sticky top-0 z-40 relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 sm:h-20 items-center">
             {/* Brand Logo & Wordmark */}
@@ -246,7 +250,7 @@ export const LoginPage = ({ defaultRole }) => {
       </header>
 
       {/* Main Focused Authentication Card */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 flex items-center justify-center">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 flex items-center justify-center relative z-10">
         <div className="w-full max-w-lg mx-auto">
           {/* Quick Return to Access Selection */}
           <div className="mb-4">

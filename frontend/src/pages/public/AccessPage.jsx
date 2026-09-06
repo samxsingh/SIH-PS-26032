@@ -15,15 +15,19 @@ import {
   UserPlus,
   FileCheck
 } from 'lucide-react';
+import AgriculturalVisualBackground from '../../components/public/AgriculturalVisualBackground';
 
 export const AccessPage = () => {
   const { t } = useTranslation();
   const { language, toggleLanguage } = useLanguage();
 
   return (
-    <div className="min-h-screen bg-warm-ivory flex flex-col selection:bg-forest-green selection:text-white font-sans">
+    <div className="min-h-screen bg-warm-ivory flex flex-col selection:bg-forest-green selection:text-white font-sans relative overflow-x-hidden">
+      {/* Contextual Visual Background - NEUTRAL mode */}
+      <AgriculturalVisualBackground variant="neutral" showContours={true} showBotanicalFrame={true} />
+
       {/* Top Header */}
-      <header className="bg-white border-b-2 border-dark-neutral sticky top-0 z-40">
+      <header className="bg-white/95 backdrop-blur-sm border-b-2 border-dark-neutral sticky top-0 z-40 relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 sm:h-20 items-center">
             <Link to="/" className="flex items-center gap-3 group">
@@ -64,7 +68,7 @@ export const AccessPage = () => {
       </header>
 
       {/* Main Role Selection Content */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 flex flex-col justify-center">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 flex flex-col justify-center relative z-10">
         <div className="max-w-5xl mx-auto w-full space-y-8">
           {/* Header Title & Subheading */}
           <div className="text-center space-y-3 animate-page-enter">

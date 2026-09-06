@@ -15,7 +15,7 @@ const inMemoryProcurements = new Map();
 /**
  * Record Produce Verification
  */
-const recordVerification = async ({ bookingId, verifiedQuantityQuintals, moisturePercentage, qualityGrade, staffUser, notes, io }) => {
+const recordVerification = async ({ bookingId, verifiedQuantityQuintals, moisturePercentage, impurityPercentage = 0.4, qualityGrade, staffUser, notes, io }) => {
   let booking = null;
   try {
     booking = await Booking.findById(bookingId).populate('farmerId', 'fullName phone');
@@ -70,6 +70,7 @@ const recordVerification = async ({ bookingId, verifiedQuantityQuintals, moistur
 
     procurement.verifiedQuantityQuintals = verQty;
     procurement.moisturePercentage = moisture;
+    procurement.impurityPercentage = Number(impurityPercentage !== undefined ? impurityPercentage : 0.4);
     procurement.qualityGrade = qualityGrade || 'Grade A';
     procurement.processedByStaffId = staffUser.id || staffUser._id;
     procurement.status = 'VERIFICATION';
@@ -77,6 +78,7 @@ const recordVerification = async ({ bookingId, verifiedQuantityQuintals, moistur
 
     await procurement.save();
   } catch (dbErr) {
+    console.error('[procurementService recordVerification dbErr]:', dbErr);
     procurement = {
       _id: 'proc_' + Date.now(),
       bookingId,
@@ -231,6 +233,8 @@ const completeProcurementTransaction = async ({ bookingId, netWeightQuintals, gr
   }
 
   if (procurement && procurement.save) {
+    procurement.grossWeightQuintals = Number(grossWeightQuintals) || (netWeight + Number(tareWeightQuintals || 1.5));
+    procurement.tareWeightQuintals = Number(tareWeightQuintals) || 1.5;
     procurement.netWeightQuintals = netWeight;
     procurement.grossAmount = grossAmount;
     procurement.deductions = Number(deductions) || 0;
@@ -317,8 +321,11 @@ const completeProcurementTransaction = async ({ bookingId, netWeightQuintals, gr
       centreAddress: booking.centreId?.address || '',
       cropType: booking.cropType,
       verifiedQuantityQuintals: procurement.verifiedQuantityQuintals || netWeight,
+      grossWeightQuintals: procurement.grossWeightQuintals || Number(grossWeightQuintals) || 45.5,
+      tareWeightQuintals: procurement.tareWeightQuintals || Number(tareWeightQuintals) || 1.5,
       netWeightQuintals: netWeight,
-      moisturePercentage: procurement.moisturePercentage || 12.0,
+      moisturePercentage: procurement.moisturePercentage || 12.3,
+      impurityPercentage: procurement.impurityPercentage || 0.4,
       qualityGrade: procurement.qualityGrade || 'Grade A',
       procurementRatePerQuintal: mspRate,
       grossAmount,

@@ -9,6 +9,7 @@ const {
 } = require('../controllers/queueController');
 const { authenticate, authorize } = require('../middleware/authMiddleware');
 
+router.get('/', authenticate, authorize('CENTRE_STAFF', 'ADMIN'), getTodayQueue);
 router.get('/today', authenticate, authorize('CENTRE_STAFF', 'ADMIN'), getTodayQueue);
 router.post('/call-next', authenticate, authorize('CENTRE_STAFF', 'ADMIN'), handleCallNext);
 router.post('/:id/transition', authenticate, authorize('CENTRE_STAFF', 'ADMIN'), handleTransition);

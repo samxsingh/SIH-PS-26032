@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import Navbar from '../../components/common/Navbar';
 import Button from '../../components/common/Button';
 import Badge from '../../components/common/Badge';
+import { getLocalizedStage, getLocalizedCrop } from '../../utils/formatters';
 import { CheckCircle2, Ticket, Calendar, Clock, MapPin, Sprout, ArrowRight, ExternalLink, Building2, Navigation } from 'lucide-react';
 
 export const BookingSuccessPage = () => {
@@ -12,16 +13,16 @@ export const BookingSuccessPage = () => {
   const navigate = useNavigate();
 
   const booking = location.state?.booking || {
-    tokenNumber: 'TOK-LKO01-20261015-014',
-    bookingReference: 'BKG-20261015-9982',
-    bookingDate: '2026-10-15',
+    tokenNumber: 'GOM01-109',
+    bookingReference: 'BKG-LKO01-20260906-109',
+    bookingDate: '2026-09-06',
     timeWindow: '10:00 AM - 11:00 AM',
     cropType: 'Wheat',
-    estimatedQuantityQuintals: 50,
+    estimatedQuantityQuintals: 44.0,
     centreName: 'Krishi Seva Procurement Centre — Gomti Nagar',
     centreAddress: 'Vibhuti Khand, Gomti Nagar, Lucknow',
-    assignedStaffName: 'Anil Verma',
-    assignedStaffDesignation: 'Quality Inspector',
+    assignedStaffName: 'Satish Kumar',
+    assignedStaffDesignation: 'Procurement Incharge',
     assignmentStatus: 'ASSIGNED'
   };
 
@@ -89,14 +90,16 @@ export const BookingSuccessPage = () => {
 
             <div className="pt-2 border-t-2 border-dark-neutral/10 flex items-center justify-between text-xs">
               <span className="text-dark-neutral-muted uppercase font-bold">{t('farmer.crop_produce_label')}</span>
-              <span className="font-black text-dark-neutral">{booking.cropType} • {booking.estimatedQuantityQuintals} Qtl</span>
+              <span className="font-black text-dark-neutral">
+                {getLocalizedCrop(booking.cropType, t)} • {booking.estimatedQuantityQuintals} {t('common.quintals', 'Qtl')}
+              </span>
             </div>
 
             {/* Mandi Affiliation and Booking Status */}
             <div className="flex items-center justify-between text-xs pt-1">
               <span className="text-dark-neutral-muted uppercase font-bold flex items-center gap-1">
                 <Building2 className="w-3.5 h-3.5 text-forest-green" />
-                <span>Mandi Jurisdiction:</span>
+                <span>{t('farmer.mandi_jurisdiction', 'Mandi Jurisdiction')}:</span>
               </span>
               <span className="font-bold text-forest-green">
                 {booking.mandiName || 'Lucknow Principal APMC Mandi'}
@@ -104,9 +107,9 @@ export const BookingSuccessPage = () => {
             </div>
 
             <div className="flex items-center justify-between text-xs pt-1">
-              <span className="text-dark-neutral-muted uppercase font-bold">Current Lifecycle Status:</span>
+              <span className="text-dark-neutral-muted uppercase font-bold">{t('farmer.current_lifecycle_status', 'Current Lifecycle Status')}:</span>
               <span className="font-mono font-bold bg-emerald-100 text-emerald-900 border border-emerald-400 px-2 py-0.5 rounded-xs">
-                {booking.operationalStatus || 'BOOKED (Confirmed)'}
+                {getLocalizedStage(booking.operationalStatus || 'BOOKED', t)}
               </span>
             </div>
 
@@ -138,14 +141,14 @@ export const BookingSuccessPage = () => {
           <div className="flex flex-col sm:flex-row gap-3 justify-center mb-3">
             <Link to={`/farmer/procurement/${booking.id || booking._id}`} className="w-full sm:w-auto flex-1">
               <Button variant="primary" size="lg" fullWidth className="font-black shadow-brutal">
-                <span>View Procurement Journey</span>
+                <span>{t('farmer.btn_view_journey', 'View Procurement Journey')}</span>
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </Link>
 
             <Link to="/farmer/find-centres" className="w-full sm:w-auto flex-1">
               <Button variant="outline" size="lg" fullWidth className="font-bold">
-                <span>View Centre on Map</span>
+                <span>{t('farmer.btn_view_on_map', 'View Centre on Map')}</span>
               </Button>
             </Link>
           </div>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { CheckCircle2, Clock, Circle, ArrowRight } from 'lucide-react';
 
 /**
@@ -8,9 +9,9 @@ import { CheckCircle2, Clock, Circle, ArrowRight } from 'lucide-react';
  * and seamlessly transforms into a vertical step ladder on mobile/tablet (<lg).
  * 
  * Visual States:
- * - Completed: Emerald badge with checkmark (✓)
+ * - Completed: Emerald badge with checkmark (✓ COMPLETED)
  * - Current: Bold forest green with pulse indicator (● CURRENT)
- * - Upcoming: Muted outline with step number (○)
+ * - Upcoming: Muted outline with step number (○ UPCOMING)
  */
 export const ProgressLadder = ({
   stages = [],
@@ -21,6 +22,7 @@ export const ProgressLadder = ({
   showMeanings = true,
   tone = 'dark' // 'dark' (on forest-green/dark card) | 'light' (on white/sand background)
 }) => {
+  const { t } = useTranslation();
   if (!stages || stages.length === 0) return null;
 
   const shouldShowMeanings = showMeanings && !compact;
@@ -220,15 +222,15 @@ export const ProgressLadder = ({
 
                     {isCurrent ? (
                       <span className="inline-block mt-0.5 text-[9px] font-black uppercase px-1.5 py-0.2 bg-wheat-accent text-dark-neutral border border-dark-neutral rounded-xs shadow-[1px_1px_0px_#22252A]">
-                        ● Active
+                        ● {t('farmer.stage_current', 'CURRENT')}
                       </span>
                     ) : isPassed ? (
                       <span className="inline-block mt-0.5 text-[9px] font-bold text-emerald-800">
-                        ✓ Done
+                        ✓ {t('farmer.stage_completed', 'COMPLETED')}
                       </span>
                     ) : (
                       <span className="inline-block mt-0.5 text-[9px] font-medium text-dark-neutral-muted/70">
-                        Pending
+                        ○ {t('farmer.stage_upcoming', 'UPCOMING')}
                       </span>
                     )}
 
@@ -314,9 +316,17 @@ export const ProgressLadder = ({
                       >
                         {stage.short || stage.label}
                       </span>
-                      {isCurrent && (
+                      {isCurrent ? (
                         <span className="inline-block text-[9px] font-black uppercase px-1.5 py-0.2 bg-wheat-accent text-dark-neutral border border-dark-neutral rounded-xs shadow-[1px_1px_0px_#22252A]">
-                          Current
+                          ● {t('farmer.stage_current', 'CURRENT')}
+                        </span>
+                      ) : isPassed ? (
+                        <span className="inline-block text-[9px] font-bold text-emerald-800">
+                          ✓ {t('farmer.stage_completed', 'COMPLETED')}
+                        </span>
+                      ) : (
+                        <span className="inline-block text-[9px] font-medium text-dark-neutral-muted/70">
+                          ○ {t('farmer.stage_upcoming', 'UPCOMING')}
                         </span>
                       )}
                     </div>

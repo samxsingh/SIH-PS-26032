@@ -75,11 +75,11 @@ export const CentreProfileSection = ({
 
   const currentCoords = centreProfile?.coordinates || [80.9980, 26.8530];
   const activeCentreForMap = selectedMapCentre || {
-    id: centreProfile?.centreId || 'c1',
-    name: centreProfile?.name || 'Dubagga Procurement Centre',
+    id: centreProfile?.centreId || 'LKO_GOM01',
+    name: centreProfile?.name || 'Krishi Seva Procurement Centre — Gomti Nagar',
     location: { coordinates: currentCoords },
     district: centreProfile?.district || 'Lucknow',
-    address: centreProfile?.address || 'Lucknow, Uttar Pradesh',
+    address: centreProfile?.address || 'Vibhuti Khand, Gomti Nagar, Lucknow',
     currentLoadPercentage: centreProfile?.currentLoadPercentage || 35
   };
 
@@ -131,7 +131,7 @@ export const CentreProfileSection = ({
             <span className="text-dark-neutral-muted block text-[10px] font-bold uppercase">Parent Regulated Mandi</span>
             <span className="font-bold text-dark-neutral mt-0.5 block flex items-center gap-1">
               <Building2 className="w-3.5 h-3.5 text-forest-green shrink-0" />
-              {centreProfile?.mandiName || centreProfile?.mandi?.name || 'Dubagga Regulated Mandi'}
+              {centreProfile?.mandiName || centreProfile?.mandi?.name || 'Gomti Nagar Regulated APMC Mandi'}
             </span>
           </div>
 

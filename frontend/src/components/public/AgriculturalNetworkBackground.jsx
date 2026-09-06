@@ -10,18 +10,18 @@ import React from 'react';
 export const AgriculturalNetworkBackground = () => {
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden select-none z-0" aria-hidden="true">
-      {/* Layer 1: Dot Matrix Grid */}
+      {/* Layer 1: Dot Matrix Grid (Quiet & Restrained) */}
       <div 
-        className="absolute inset-0 opacity-[0.035]"
+        className="absolute inset-0 opacity-[0.02]"
         style={{
-          backgroundImage: 'radial-gradient(#22252A 1.25px, transparent 1.25px)',
+          backgroundImage: 'radial-gradient(#22252A 1px, transparent 1px)',
           backgroundSize: '24px 24px'
         }}
       />
 
-      {/* Layer 2: Ambient SVG Network & Contours */}
+      {/* Layer 2: Ambient SVG Network & Contours (Subtle & Quiet) */}
       <svg
-        className="absolute inset-0 w-full h-full opacity-[0.05] text-forest-green"
+        className="absolute inset-0 w-full h-full opacity-[0.03] text-forest-green"
         xmlns="http://www.w3.org/2000/svg"
         preserveAspectRatio="none"
         viewBox="0 0 1200 800"

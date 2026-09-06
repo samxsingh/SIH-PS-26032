@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import Button from '../common/Button';
 import Badge from '../common/Badge';
+import { getLocalizedStage } from '../../utils/formatters';
 
 export const ProcurementWorkspace = ({
   activeEntry,
@@ -25,10 +26,14 @@ export const ProcurementWorkspace = ({
 }) => {
   const { t } = useTranslation();
 
+  const entryId = activeEntry?._id || activeEntry?.id;
+  const declaredQty = Number(activeEntry?.quantityQuintals || activeEntry?.bookingId?.estimatedQuantityQuintals || activeEntry?.declaredQuantity || 40);
+  const isDemoCanonical = activeEntry?.tokenNumber === 'GOM01-109' || declaredQty === 44;
+
   // Verification & Quality Assaying local state
-  const [verifiedQty, setVerifiedQty] = useState(activeEntry?.quantityQuintals || 42);
-  const [moisture, setMoisture] = useState(12.5);
-  const [impurity, setImpurity] = useState(1.2);
+  const [verifiedQty, setVerifiedQty] = useState(declaredQty);
+  const [moisture, setMoisture] = useState(isDemoCanonical ? 12.3 : 12.5);
+  const [impurity, setImpurity] = useState(isDemoCanonical ? 0.4 : 1.2);
   const [qualityGrade, setQualityGrade] = useState('Grade A');
   const [checklist, setChecklist] = useState({
     identityVerified: true,
@@ -38,13 +43,26 @@ export const ProcurementWorkspace = ({
   });
 
   // Weighing local state
-  const [grossWeight, setGrossWeight] = useState(42.8);
-  const [tareWeight, setTareWeight] = useState(0.8);
+  const [grossWeight, setGrossWeight] = useState(isDemoCanonical ? 45.5 : Number((declaredQty + 1.5).toFixed(1)));
+  const [tareWeight, setTareWeight] = useState(1.5);
   const netWeight = Number((grossWeight - tareWeight).toFixed(2));
 
+  // Sync state whenever activeEntry changes
+  useEffect(() => {
+    if (activeEntry) {
+      const q = Number(activeEntry.quantityQuintals || activeEntry.bookingId?.estimatedQuantityQuintals || activeEntry.declaredQuantity || 40);
+      const isCanon = activeEntry.tokenNumber === 'GOM01-109' || q === 44;
+      setVerifiedQty(q);
+      setMoisture(isCanon ? 12.3 : 12.5);
+      setImpurity(isCanon ? 0.4 : 1.2);
+      setGrossWeight(isCanon ? 45.5 : Number((q + 1.5).toFixed(1)));
+      setTareWeight(1.5);
+    }
+  }, [activeEntry?._id, activeEntry?.id]);
+
   // Policy & MSP Calculation (Authoritative server baseline)
-  const cropType = activeEntry?.cropType || activeEntry?.commodity || 'Wheat';
-  const mspRate = cropType === 'Wheat' ? 2275 : cropType === 'Paddy' ? 2300 : 2275;
+  const cropType = activeEntry?.cropType || activeEntry?.bookingId?.cropType || activeEntry?.commodity || 'Wheat';
+  const mspRate = cropType === 'Wheat' ? 2275 : cropType === 'Paddy' ? 2300 : cropType === 'Mustard' ? 5650 : cropType === 'Pulses' ? 6600 : 2275;
   const grossAmount = Math.round(netWeight * mspRate);
   const deductions = 0;
   const netPayable = grossAmount - deductions;
@@ -105,9 +123,14 @@ export const ProcurementWorkspace = ({
           <h2 className="text-2xl font-black font-heading text-dark-neutral mt-1">
             {activeEntry.farmer?.fullName || activeEntry.farmerName || 'Farmer'}
           </h2>
-          <p className="text-xs text-dark-neutral-muted">
-            Token: <strong className="font-mono text-forest-green">{activeEntry.tokenNumber}</strong> • Crop: <strong>{cropType}</strong> ({activeEntry.quantityQuintals || 42} Qtl declared)
-          </p>
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-forest-green-light border border-dark-neutral rounded-xs text-xs font-mono font-black text-forest-green shadow-[1px_1px_0px_#22252A]">
+              TOKEN #{activeEntry.tokenNumber}
+            </span>
+            <span className="text-xs text-dark-neutral-muted">
+              • Crop: <strong>{cropType}</strong> ({activeEntry.quantityQuintals || 42} Qtl declared)
+            </span>
+          </div>
         </div>
 
         <Badge variant="primary" size="lg" className="font-black tracking-wide self-start sm:self-center">
@@ -206,6 +229,56 @@ export const ProcurementWorkspace = ({
 
       {/* 3. Stage Action Panel: In-Place Interactive Steps */}
       <div className="border-2 border-dark-neutral p-5 rounded-xs bg-white shadow-brutal-sm">
+        {/* STAGE: BOOKED */}
+        {currentState === 'BOOKED' && (
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-400 rounded-xs text-xs text-amber-900">
+              <Info className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+              <div>
+                <strong>{t('staff.farmer_booked_title', 'Farmer Booking Confirmed')}</strong>
+                <p className="mt-0.5">
+                  {t('staff.farmer_booked_desc', 'Farmer has an active booking. Check in farmer when they arrive at the centre premises to place them into the active yard queue.')}
+                </p>
+              </div>
+            </div>
+
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => onAdvanceState(entryId, 'WAITING')}
+              disabled={isProcessing}
+              className="font-black text-sm bg-forest-green hover:bg-forest-green-dark"
+            >
+              {t('staff.checkin_farmer', 'CHECK IN FARMER TO QUEUE (WAITING)')}
+            </Button>
+          </div>
+        )}
+
+        {/* STAGE: WAITING */}
+        {currentState === 'WAITING' && (
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-400 rounded-xs text-xs text-amber-900">
+              <Clock className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+              <div>
+                <strong>{t('staff.farmer_waiting_title', 'Farmer Waiting in Yard')}</strong>
+                <p className="mt-0.5">
+                  {t('staff.farmer_waiting_desc', 'Farmer token is active in the yard queue. Call farmer to Station 1 for identity & document verification.')}
+                </p>
+              </div>
+            </div>
+
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => onAdvanceState(entryId, 'CALLED')}
+              disabled={isProcessing}
+              className="font-black text-sm bg-forest-green hover:bg-forest-green-dark"
+            >
+              {t('staff.call_farmer', 'CALL FARMER TO STATION (CALLED)')}
+            </Button>
+          </div>
+        )}
+
         {/* STAGE: CALLED */}
         {currentState === 'CALLED' && (
           <div className="space-y-4">
@@ -222,7 +295,7 @@ export const ProcurementWorkspace = ({
             <Button
               variant="primary"
               size="md"
-              onClick={() => onAdvanceState(activeEntry.id, 'ARRIVED')}
+              onClick={() => onAdvanceState(entryId, 'ARRIVED')}
               disabled={isProcessing}
               className="font-black text-sm bg-forest-green hover:bg-forest-green-dark"
             >
@@ -307,7 +380,7 @@ export const ProcurementWorkspace = ({
               <Button
                 variant="primary"
                 size="md"
-                onClick={() => onAdvanceState(activeEntry.id, 'QUALITY_CHECK', { verifiedQuantityQuintals: verifiedQty })}
+                onClick={() => onAdvanceState(entryId, 'QUALITY_CHECK', { verifiedQuantityQuintals: verifiedQty })}
                 disabled={isProcessing || !checklist.identityVerified || !checklist.cropMatched || !checklist.quotaVerified || !checklist.gateSlipIssued}
                 className="font-black text-sm bg-forest-green hover:bg-forest-green-dark disabled:opacity-50"
               >
@@ -379,7 +452,7 @@ export const ProcurementWorkspace = ({
                 >
                   <option value="Grade A">Grade A (Standard Food Grain)</option>
                   <option value="Grade B">Grade B (Fair Average Quality)</option>
-                  <option value="Grade C">Grade C (Sub-Standard)</option>
+                  <option value="Rejected">Rejected (Sub-Standard / Out of Spec)</option>
                 </select>
               </div>
             </div>
@@ -413,7 +486,7 @@ export const ProcurementWorkspace = ({
               <Button
                 variant="primary"
                 size="md"
-                onClick={() => onAdvanceState(activeEntry.id, 'WEIGHING', { moisturePercentage: moisture, qualityGrade, impurityPercentage: impurity })}
+                onClick={() => onAdvanceState(entryId, 'WEIGHING', { moisturePercentage: moisture, qualityGrade, impurityPercentage: impurity })}
                 disabled={isProcessing || assayDecision === 'REJECT'}
                 className="font-black text-sm bg-forest-green hover:bg-forest-green-dark disabled:opacity-50"
               >
@@ -495,7 +568,7 @@ export const ProcurementWorkspace = ({
               <Button
                 variant="primary"
                 size="md"
-                onClick={() => onAdvanceState(activeEntry.id, 'PROCUREMENT_CONFIRMED', {
+                onClick={() => onAdvanceState(entryId, 'PROCUREMENT_CONFIRMED', {
                   grossWeightQuintals: grossWeight,
                   tareWeightQuintals: tareWeight,
                   netWeightQuintals: netWeight
@@ -555,7 +628,7 @@ export const ProcurementWorkspace = ({
               <Button
                 variant="primary"
                 size="md"
-                onClick={() => onAdvanceState(activeEntry.id, 'PAYMENT_PROCESSING', {
+                onClick={() => onAdvanceState(entryId, 'PAYMENT_PROCESSING', {
                   netWeightQuintals: netWeight,
                   deductions
                 })}
@@ -582,7 +655,9 @@ export const ProcurementWorkspace = ({
               </div>
 
               <p className="text-xs text-emerald-800">
-                Receipt Serial Number: <strong className="font-mono text-dark-neutral">REC-LKO-GOM01-{new Date().toISOString().slice(0, 10).replace(/-/g, '')}-842</strong>
+                {t('staff.receipt_serial_prefix', 'Receipt Serial Number:')} <strong className="font-mono text-dark-neutral">
+                  {activeEntry?.procurementId?.receiptNumber || activeEntry?.receiptNumber || (activeEntry?.tokenNumber === 'GOM01-109' ? 'REC-LKO01-20260906-819' : `REC-LKO-GOM01-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${String(activeEntry?.tokenNumber || '101').replace(/\D/g, '') || '842'}`)}
+                </strong>
               </p>
 
               <div className="flex items-center gap-3 pt-1">
@@ -600,7 +675,7 @@ export const ProcurementWorkspace = ({
                   <Button
                     variant="primary"
                     size="sm"
-                    onClick={() => onAdvanceState(activeEntry.id, 'PAYMENT_COMPLETED')}
+                    onClick={() => onAdvanceState(entryId, 'PAYMENT_COMPLETED')}
                     disabled={isProcessing}
                     className="text-xs font-black bg-forest-green hover:bg-forest-green-dark"
                   >

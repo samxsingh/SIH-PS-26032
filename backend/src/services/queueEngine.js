@@ -1,23 +1,24 @@
 const QueueEntry = require('../models/QueueEntry');
 const Booking = require('../models/Booking');
 const Procurement = require('../models/Procurement');
+const PaymentStatus = require('../models/PaymentStatus');
 const ProcurementCentre = require('../models/ProcurementCentre');
 const { getTodayIST } = require('../utils/dateUtils');
 const { logQueueAction } = require('./auditService');
 const { inMemoryQueueEntries, inMemoryBookings } = require('./bookingService');
 
-// Explicit State Machine Transition Map (Canonical & Backward Compatible)
+// Explicit State Machine Transition Map (Canonical 10-Stage & Backward Compatible)
 const VALID_TRANSITIONS = {
-  BOOKED: ['WAITING', 'ARRIVED', 'CANCELLED', 'NO_SHOW'],
-  WAITING: ['CALLED', 'CANCELLED', 'NO_SHOW'],
-  CALLED: ['ARRIVED', 'NO_SHOW', 'CANCELLED'],
+  BOOKED: ['WAITING', 'CALLED', 'ARRIVED', 'CANCELLED', 'NO_SHOW'],
+  WAITING: ['CALLED', 'ARRIVED', 'CANCELLED', 'NO_SHOW'],
+  CALLED: ['ARRIVED', 'VERIFICATION', 'NO_SHOW', 'CANCELLED'],
   ARRIVED: ['VERIFICATION', 'QUALITY_CHECK', 'CANCELLED'],
   VERIFICATION: ['QUALITY_CHECK', 'WEIGHING', 'REJECTED', 'CANCELLED'],
   QUALITY_CHECK: ['WEIGHING', 'REJECTED', 'CANCELLED'],
   WEIGHING: ['PROCUREMENT_CONFIRMED', 'COMPLETED', 'REJECTED', 'CANCELLED'],
   PROCUREMENT_CONFIRMED: ['PAYMENT_PROCESSING', 'PAYMENT_COMPLETED', 'COMPLETED', 'CANCELLED'],
   PAYMENT_PROCESSING: ['PAYMENT_COMPLETED', 'COMPLETED', 'CANCELLED'],
-  PAYMENT_COMPLETED: [], // Terminal
+  PAYMENT_COMPLETED: ['COMPLETED'],
   COMPLETED: [], // Terminal
   CANCELLED: [], // Terminal
   NO_SHOW: [],   // Terminal
@@ -157,10 +158,10 @@ const callNextFarmer = async ({ centreId, queueDate, staffUser, counterId = 'Cou
  * Execute State Transition
  * Validates transition, updates state atomically, logs audit, and broadcasts Socket event
  */
-const transitionQueueState = async ({ queueEntryId, targetState, staffUser, counterId, notes, io }) => {
+const transitionQueueState = async ({ queueEntryId, targetState, staffUser, counterId, notes, payload = {}, io }) => {
   let queueEntry = null;
   try {
-    queueEntry = await QueueEntry.findById(queueEntryId);
+    queueEntry = await QueueEntry.findById(queueEntryId).populate('bookingId');
   } catch (err) {
     queueEntry = inMemoryQueueEntries.get(queueEntryId);
   }
@@ -187,8 +188,19 @@ const transitionQueueState = async ({ queueEntryId, targetState, staffUser, coun
 
   const currentState = queueEntry.state;
 
+  // Idempotency: Double clicks or re-sending the current state succeeds safely without failure
+  if (currentState === targetState) {
+    const populated = await QueueEntry.findById(queueEntry._id || queueEntryId)
+      .populate('farmerId', 'fullName phone district villageName')
+      .populate('bookingId');
+    return populated || queueEntry;
+  }
+
   if (!isValidTransition(currentState, targetState)) {
-    throw new Error(`Invalid state transition from ${currentState} to ${targetState}.`);
+    const err = new Error(`Invalid state transition from ${currentState} to ${targetState}.`);
+    err.statusCode = 400;
+    err.code = 'INVALID_STATE_TRANSITION';
+    throw err;
   }
 
   const updateFields = {
@@ -201,7 +213,9 @@ const transitionQueueState = async ({ queueEntryId, targetState, staffUser, coun
   if (targetState === 'ARRIVED') updateFields.arrivedAt = now;
   if (targetState === 'VERIFICATION') updateFields.verificationStartedAt = now;
   if (targetState === 'WEIGHING') updateFields.weighingStartedAt = now;
-  if (targetState === 'COMPLETED') updateFields.completedAt = now;
+  if (targetState === 'PROCUREMENT_CONFIRMED') updateFields.confirmedAt = now;
+  if (targetState === 'PAYMENT_PROCESSING') updateFields.paymentProcessingAt = now;
+  if (targetState === 'PAYMENT_COMPLETED' || targetState === 'COMPLETED') updateFields.completedAt = now;
   if (targetState === 'CANCELLED') updateFields.cancelledAt = now;
   if (targetState === 'NO_SHOW') updateFields.noShowAt = now;
 
@@ -211,28 +225,131 @@ const transitionQueueState = async ({ queueEntryId, targetState, staffUser, coun
       queueEntryId,
       { $set: updateFields },
       { new: true }
-    ).populate('farmerId', 'fullName phone');
+    ).populate('farmerId', 'fullName phone district villageName').populate('bookingId');
   } catch (dbErr) {
     Object.assign(queueEntry, updateFields);
   }
 
   // Synchronize Booking operationalStatus across all lifecycle transitions
-  try {
-    const bookingUpdate = {
-      operationalStatus: targetState
-    };
-    if (targetState === 'COMPLETED' || targetState === 'CANCELLED') {
-      bookingUpdate.bookingStatus = targetState === 'COMPLETED' ? 'COMPLETED' : 'CANCELLED';
-    }
-    await Booking.findByIdAndUpdate(queueEntry.bookingId, { $set: bookingUpdate });
-  } catch (err) {
-    const b = inMemoryBookings.get(queueEntry.bookingId.toString());
-    if (b) {
-      b.operationalStatus = targetState;
-      if (targetState === 'COMPLETED' || targetState === 'CANCELLED') {
-        b.bookingStatus = targetState === 'COMPLETED' ? 'COMPLETED' : 'CANCELLED';
+  const bookingId = queueEntry.bookingId?._id || queueEntry.bookingId;
+  if (bookingId) {
+    try {
+      const bookingUpdate = {
+        operationalStatus: targetState
+      };
+      if (targetState === 'PAYMENT_COMPLETED' || targetState === 'COMPLETED') {
+        bookingUpdate.bookingStatus = 'COMPLETED';
+        bookingUpdate.status = 'COMPLETED';
+      } else if (targetState === 'CANCELLED') {
+        bookingUpdate.bookingStatus = 'CANCELLED';
+        bookingUpdate.status = 'CANCELLED';
+      }
+      await Booking.findByIdAndUpdate(bookingId, { $set: bookingUpdate });
+    } catch (err) {
+      const b = inMemoryBookings.get(bookingId.toString());
+      if (b) {
+        b.operationalStatus = targetState;
+        if (targetState === 'PAYMENT_COMPLETED' || targetState === 'COMPLETED') {
+          b.bookingStatus = 'COMPLETED';
+          b.status = 'COMPLETED';
+        } else if (targetState === 'CANCELLED') {
+          b.bookingStatus = 'CANCELLED';
+          b.status = 'CANCELLED';
+        }
       }
     }
+  }
+
+  // Authoritative Procurement & Payment Records Synchronization
+  try {
+    const farmerId = queueEntry.farmerId?._id || queueEntry.farmerId;
+    const centreId = queueEntry.centreId?._id || queueEntry.centreId;
+    const cropType = queueEntry.bookingId?.cropType || payload.cropType || 'Wheat';
+    const declaredQty = Number(queueEntry.bookingId?.estimatedQuantityQuintals || payload.declaredQuantityQuintals || 42);
+
+    let proc = null;
+    if (bookingId) {
+      proc = await Procurement.findOne({ bookingId });
+      if (!proc) {
+        proc = new Procurement({
+          bookingId,
+          queueEntryId: queueEntry._id || queueEntryId,
+          farmerId,
+          centreId,
+          tokenNumber: queueEntry.tokenNumber,
+          cropType,
+          declaredQuantityQuintals: declaredQty,
+          procurementRatePerQuintal: 2275
+        });
+      }
+
+      if (payload.verifiedQuantityQuintals !== undefined) {
+        proc.verifiedQuantityQuintals = Number(payload.verifiedQuantityQuintals);
+      }
+      if (payload.moisturePercentage !== undefined) {
+        proc.moisturePercentage = Math.min(30, Math.max(0, Number(payload.moisturePercentage)));
+      }
+      if (payload.qualityGrade) {
+        const allowedGrades = ['Grade A', 'Grade B', 'Rejected', 'Pending'];
+        proc.qualityGrade = allowedGrades.includes(payload.qualityGrade) ? payload.qualityGrade : 'Grade A';
+      }
+      if (payload.netWeightQuintals !== undefined || targetState === 'PROCUREMENT_CONFIRMED') {
+        const netWeight = Number(payload.netWeightQuintals || proc.verifiedQuantityQuintals || declaredQty);
+        proc.netWeightQuintals = netWeight;
+        const rate = proc.procurementRatePerQuintal || 2275;
+        proc.grossAmount = Math.round(netWeight * rate);
+        const deductions = Number(payload.deductions || 0);
+        proc.deductions = deductions;
+        proc.netPayableAmount = Math.max(0, proc.grossAmount - deductions);
+        if (!proc.receiptSerialNumber) {
+          const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+          proc.receiptSerialNumber = `REC-LKO-GOM01-${dateStr}-${queueEntry.sequenceNumber || 101}`;
+        }
+      }
+      if (staffUser?._id || staffUser?.id) {
+        proc.processedByStaffId = staffUser._id || staffUser.id;
+      }
+      if (targetState === 'PAYMENT_COMPLETED' || targetState === 'COMPLETED') {
+        proc.status = 'COMPLETED';
+      } else if (['VERIFICATION', 'QUALITY_CHECK', 'WEIGHING', 'PROCUREMENT_CONFIRMED'].includes(targetState)) {
+        proc.status = targetState;
+      }
+      await proc.save();
+
+      // Upsert PaymentStatus for demo tracking
+      if (['PAYMENT_PROCESSING', 'PAYMENT_COMPLETED', 'COMPLETED'].includes(targetState)) {
+        let pStatus = await PaymentStatus.findOne({ bookingId });
+        const pStage = (targetState === 'PAYMENT_COMPLETED' || targetState === 'COMPLETED') ? 'PAID' : 'PAYMENT_PROCESSING';
+        if (!pStatus) {
+          pStatus = new PaymentStatus({
+            bookingId,
+            procurementId: proc._id,
+            farmerId,
+            currentStage: pStage,
+            totalAmount: proc.netPayableAmount || proc.grossAmount,
+            demoReferenceNumber: `UPI-LKO-${Date.now().toString().slice(-8)}`,
+            stageHistory: [{
+              stage: pStage,
+              updatedAt: new Date(),
+              updatedByRole: staffUser?.role || 'CENTRE_STAFF',
+              remarks: `Transitioned to ${targetState}`
+            }]
+          });
+        } else {
+          pStatus.currentStage = pStage;
+          pStatus.totalAmount = proc.netPayableAmount || proc.grossAmount;
+          pStatus.stageHistory.push({
+            stage: pStage,
+            updatedAt: new Date(),
+            updatedByRole: staffUser?.role || 'CENTRE_STAFF',
+            remarks: `Transitioned to ${targetState}`
+          });
+        }
+        await pStatus.save();
+      }
+    }
+  } catch (procErr) {
+    console.warn('[Queue Transition] Procurement sync notice:', procErr.message);
   }
 
   const farmerIdStr = queueEntry.farmerId?._id ? queueEntry.farmerId._id.toString() : queueEntry.farmerId?.toString();
@@ -251,7 +368,7 @@ const transitionQueueState = async ({ queueEntryId, targetState, staffUser, coun
   });
 
   // Socket Broadcast
-  const payload = {
+  const broadcastPayload = {
     queueEntryId: queueEntry._id ? queueEntry._id.toString() : queueEntry.id,
     tokenNumber: queueEntry.tokenNumber,
     state: targetState,
@@ -260,7 +377,7 @@ const transitionQueueState = async ({ queueEntryId, targetState, staffUser, coun
     farmerName: queueEntry.farmerId?.fullName || 'Farmer'
   };
 
-  broadcastQueueEvent(io, centreIdStr, farmerIdStr, `queue:${targetState.toLowerCase()}`, payload);
+  broadcastQueueEvent(io, centreIdStr, farmerIdStr, `queue:${targetState.toLowerCase()}`, broadcastPayload);
 
   return queueEntry;
 };
@@ -297,7 +414,7 @@ const getFarmerQueueStatus = async (farmerId) => {
 
   // Calculate people ahead & current token
   let peopleAhead = 0;
-  let currentlyServingToken = 'TOK-SEH01-001';
+  let currentlyServingToken = '—';
 
   try {
     peopleAhead = await QueueEntry.countDocuments({

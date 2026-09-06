@@ -40,6 +40,7 @@ const getTodayQueue = async (req, res, next) => {
     try {
       queue = await QueueEntry.find({ centreId, queueDate: dateStr })
         .populate('farmerId', 'fullName phone district villageName')
+        .populate('bookingId')
         .sort({ sequenceNumber: 1 })
         .lean();
     } catch (dbErr) {
@@ -58,18 +59,26 @@ const getTodayQueue = async (req, res, next) => {
       }
     }
 
-    const formattedQueue = queue.map((q) => ({
-      id: q._id ? q._id.toString() : q.id,
-      tokenNumber: q.tokenNumber,
-      sequenceNumber: q.sequenceNumber,
-      state: q.state,
-      timeWindow: q.timeWindow || '09:00 - 10:00 AM',
-      counterId: q.counterId || 'Counter 1',
-      calledAt: q.calledAt,
-      arrivedAt: q.arrivedAt,
-      completedAt: q.completedAt,
-      farmer: q.farmerId || { fullName: 'Ramesh Kumar', phone: '9876543210' }
-    }));
+    const formattedQueue = queue.map((q) => {
+      const qId = q._id ? q._id.toString() : q.id;
+      return {
+        _id: qId,
+        id: qId,
+        tokenNumber: q.tokenNumber,
+        sequenceNumber: q.sequenceNumber,
+        state: q.state,
+        timeWindow: q.timeWindow || q.bookingId?.timeWindow || '09:00 - 10:00 AM',
+        counterId: q.counterId || 'Counter 1',
+        calledAt: q.calledAt,
+        arrivedAt: q.arrivedAt,
+        completedAt: q.completedAt,
+        farmer: q.farmerId || { fullName: 'Ramesh Kumar', phone: '9876543210' },
+        farmerId: q.farmerId,
+        bookingId: q.bookingId,
+        cropType: q.bookingId?.cropType || 'Wheat',
+        quantityQuintals: q.bookingId?.estimatedQuantityQuintals || 42
+      };
+    });
 
     res.status(200).json({
       success: true,
@@ -126,7 +135,7 @@ const handleCallNext = async (req, res, next) => {
 const handleTransition = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { targetState, counterId, notes } = req.body;
+    const { targetState, counterId, notes, ...payload } = req.body;
 
     if (!targetState) {
       return res.status(400).json({
@@ -143,6 +152,7 @@ const handleTransition = async (req, res, next) => {
       staffUser: req.user,
       counterId: counterId || 'Counter 1',
       notes: notes || '',
+      payload,
       io
     });
 

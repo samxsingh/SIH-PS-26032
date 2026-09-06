@@ -8,7 +8,7 @@ const paymentStatusSchema = new mongoose.Schema(
       required: true
     },
     procurementId: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.Mixed,
       ref: 'Procurement'
     },
     farmerId: {

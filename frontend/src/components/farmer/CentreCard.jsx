@@ -7,6 +7,7 @@ import { MapPin, Clock, Users, Calendar, ShieldCheck, AlertTriangle, Eye, Wheat 
 export const CentreCard = ({
   centre,
   onSelectCentre,
+  onBookSlot,
   onViewDetails,
   isSelected = false
 }) => {
@@ -21,8 +22,8 @@ export const CentreCard = ({
   return (
     <div
       onClick={() => {
-        if (onViewDetails) {
-          onViewDetails(centre);
+        if (onSelectCentre) {
+          onSelectCentre(centre);
         }
       }}
       className={`bg-white rounded-xs border-2 border-dark-neutral p-5 transition-all duration-normal ease-tactile shadow-brutal hover:-translate-y-0.5 hover:shadow-brutal-lg active:translate-y-0 active:shadow-brutal cursor-pointer ${
@@ -143,7 +144,11 @@ export const CentreCard = ({
           size="sm"
           onClick={(e) => {
             e.stopPropagation();
-            onSelectCentre(centre);
+            if (onBookSlot) {
+              onBookSlot(centre);
+            } else if (onSelectCentre) {
+              onSelectCentre(centre);
+            }
           }}
           className={onViewDetails ? 'flex-1' : 'w-full'}
         >

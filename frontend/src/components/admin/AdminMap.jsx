@@ -72,8 +72,8 @@ export const AdminMap = ({ centres = [], selectedCentre, onSelectCentre, height 
   useEffect(() => {
     if (mapEngine !== 'GOOGLE' || !mapRef.current || !window.google) return;
 
-    const centerLat = selectedCentre?.location?.coordinates?.[1] || 23.2000;
-    const centerLng = selectedCentre?.location?.coordinates?.[0] || 77.0800;
+    const centerLat = selectedCentre?.location?.coordinates?.[1] || 26.8467;
+    const centerLng = selectedCentre?.location?.coordinates?.[0] || 80.9462;
 
     const gMap = new window.google.maps.Map(mapRef.current, {
       center: { lat: centerLat, lng: centerLng },
@@ -86,15 +86,15 @@ export const AdminMap = ({ centres = [], selectedCentre, onSelectCentre, height 
     googleMapRef.current = gMap;
 
     centres.forEach((centre) => {
-      const lat = centre.location?.coordinates?.[1] || 23.2000;
-      const lng = centre.location?.coordinates?.[0] || 77.0800;
+      const lat = centre.location?.coordinates?.[1] || 26.8467;
+      const lng = centre.location?.coordinates?.[0] || 80.9462;
       const healthColor = getHealthColor(centre.health);
       const isSelected = selectedCentre && (selectedCentre._id === centre._id || selectedCentre.id === centre.id);
 
       const marker = new window.google.maps.Marker({
         position: { lat, lng },
         map: gMap,
-        title: `${centre.name} (${centre.centreCode || 'SEH01'})`,
+        title: `${centre.name} (${centre.centreCode || 'LKO_GOM01'})`,
         icon: {
           path: window.google.maps.SymbolPath.CIRCLE,
           scale: isSelected ? 9 : 7,
@@ -109,7 +109,7 @@ export const AdminMap = ({ centres = [], selectedCentre, onSelectCentre, height 
         content: `
           <div style="font-family: sans-serif; padding: 6px; max-width: 220px; color: #22252A;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-              <strong style="color: #1B4D3E; font-size: 13px;">${centre.centreCode || 'SEH01'}</strong>
+              <strong style="color: #1B4D3E; font-size: 13px;">${centre.centreCode || 'LKO_GOM01'}</strong>
               <span style="background-color: ${healthColor}; color: white; padding: 2px 6px; border-radius: 2px; font-size: 10px; font-weight: bold; border: 1px solid #22252A;">${centre.health || 'NORMAL'}</span>
             </div>
             <strong style="color: #22252A; font-size: 13px;">${centre.name}</strong><br/>
@@ -171,8 +171,8 @@ export const AdminMap = ({ centres = [], selectedCentre, onSelectCentre, height 
           leafletMapRef.current.remove();
         }
 
-        const centerLat = selectedCentre?.location?.coordinates?.[1] || 23.2000;
-        const centerLon = selectedCentre?.location?.coordinates?.[0] || 77.0800;
+        const centerLat = selectedCentre?.location?.coordinates?.[1] || 26.8467;
+        const centerLon = selectedCentre?.location?.coordinates?.[0] || 80.9462;
 
         const map = L.map(mapRef.current).setView([centerLat, centerLon], 10);
         leafletMapRef.current = map;
@@ -183,8 +183,8 @@ export const AdminMap = ({ centres = [], selectedCentre, onSelectCentre, height 
         }).addTo(map);
 
         centres.forEach((centre) => {
-          const lat = centre.location?.coordinates?.[1] || 23.2000;
-          const lon = centre.location?.coordinates?.[0] || 77.0800;
+          const lat = centre.location?.coordinates?.[1] || 26.8467;
+          const lon = centre.location?.coordinates?.[0] || 80.9462;
           const isSelected = selectedCentre && (selectedCentre._id === centre._id || selectedCentre.id === centre.id);
           const healthColor = getHealthColor(centre.health);
 
@@ -200,7 +200,7 @@ export const AdminMap = ({ centres = [], selectedCentre, onSelectCentre, height 
           const popupContent = `
             <div style="font-family: sans-serif; padding: 4px; max-width: 200px;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                <strong style="color: #1B4D3E; font-size: 13px;">${centre.centreCode || 'SEH01'}</strong>
+                <strong style="color: #1B4D3E; font-size: 13px;">${centre.centreCode || 'LKO_GOM01'}</strong>
                 <span style="background-color: ${healthColor}; color: white; padding: 2px 6px; border-radius: 2px; font-size: 10px; font-weight: bold; border: 1px solid #22252A;">${centre.health || 'NORMAL'}</span>
               </div>
               <strong style="color: #22252A; font-size: 13px;">${centre.name}</strong><br/>

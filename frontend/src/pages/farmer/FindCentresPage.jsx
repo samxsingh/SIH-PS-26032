@@ -13,6 +13,7 @@ import CentreCard from '../../components/farmer/CentreCard';
 import GoogleCentreMap from '../../components/farmer/GoogleCentreMap';
 import CentreDetailsPanel from '../../components/farmer/CentreDetailsPanel';
 import Modal from '../../components/common/Modal';
+import AgriculturalVisualBackground from '../../components/public/AgriculturalVisualBackground';
 import {
   Search,
   MapPin,
@@ -151,24 +152,16 @@ export const FindCentresPage = () => {
     navigate(`/farmer/book-slot?centreId=${centreId}`);
   };
 
-  const handleSelectCentre = (centre, openDrawer = true, fromMap = false) => {
+  const handleSelectCentre = (centre, openDrawer = false, fromMap = false) => {
     setSelectedCentre(centre);
     if (openDrawer) {
       setSelectedEntity({ type: 'CENTRE', data: centre });
       setDetailModalCentre(centre);
     }
-    // Only scroll into view if card is outside viewport and action didn't come from map
-    const id = centre._id || centre.id;
-    if (!fromMap && cardRefs.current[id]) {
-      const rect = cardRefs.current[id].getBoundingClientRect();
-      const isInViewport = rect.top >= 0 && rect.bottom <= (window.innerHeight || document.documentElement.clientHeight);
-      if (!isInViewport) {
-        cardRefs.current[id].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      }
-    }
   };
 
   const handleSelectMandi = (mandi) => {
+    setDetailModalCentre(null);
     setSelectedEntity({ type: 'MANDI', data: mandi });
   };
 
@@ -220,10 +213,13 @@ export const FindCentresPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-warm-ivory flex flex-col selection:bg-forest-green selection:text-white font-sans">
+    <div className="min-h-screen bg-warm-ivory flex flex-col selection:bg-forest-green selection:text-white font-sans relative">
+      {/* Contextual Visual Background - FARM mode (subtle) */}
+      <AgriculturalVisualBackground variant="farm" position="left" intensity="subtle" showBotanicalFrame={true} />
+
       <Navbar />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 animate-page-enter">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 animate-page-enter relative z-10">
         {/* Header with Geography Controls */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <PageHeader
@@ -411,7 +407,7 @@ export const FindCentresPage = () => {
                   showMobileMap ? 'block' : 'hidden lg:block'
                 }`}
               >
-                <div className="sticky top-20 space-y-2">
+                <div className="lg:sticky lg:top-[80px] space-y-2">
                   <div className="flex justify-between items-center bg-white p-2.5 rounded-xs border-2 border-dark-neutral shadow-brutal-xs">
                     <h3 className="text-xs font-black font-heading tracking-wider uppercase text-dark-neutral flex items-center gap-1.5">
                       <MapPin className="w-4 h-4 text-forest-green" />
@@ -429,7 +425,7 @@ export const FindCentresPage = () => {
                     onSelectMandi={handleSelectMandi}
                     userLocation={{ lat: currentCoords.latitude, lon: currentCoords.longitude }}
                     locationMode={locationMode}
-                    height="h-[620px]"
+                    height="h-[520px] lg:h-[calc(100vh-180px)] min-h-[440px] max-h-[720px]"
                     showRoute={showRoute}
                   />
                   <div className="flex items-center justify-between text-[11px] text-dark-neutral-muted px-1 font-medium">
@@ -464,7 +460,8 @@ export const FindCentresPage = () => {
                         <CentreCard
                           centre={centre}
                           isSelected={isSelected}
-                          onSelectCentre={handleBookCentre}
+                          onSelectCentre={handleSelectCentre}
+                          onBookSlot={handleBookCentre}
                           onViewDetails={() => {
                             setSelectedEntity({ type: 'CENTRE', data: centre });
                             setDetailModalCentre(centre);

@@ -4,8 +4,7 @@ import { useTranslation } from 'react-i18next';
 import LandingNavbar from '../../components/public/LandingNavbar';
 import LandingFooter from '../../components/public/LandingFooter';
 import WorkflowDiagram from '../../components/public/WorkflowDiagram';
-import AgriculturalNetworkBackground from '../../components/public/AgriculturalNetworkBackground';
-import HeroFloatingSystem from '../../components/public/HeroFloatingSystem';
+import AgriculturalHeroBackground from '../../components/public/AgriculturalHeroBackground';
 import {
   MapPin,
   Calendar,
@@ -18,7 +17,8 @@ import {
   CheckCircle2,
   Lock,
   Clock,
-  Sparkles
+  Sparkles,
+  BadgeCheck
 } from 'lucide-react';
 
 export const LandingPage = () => {
@@ -135,59 +135,129 @@ export const LandingPage = () => {
         {/* ========================================================= */}
         {/* 1. HERO SECTION */}
         {/* ========================================================= */}
-        <section className="relative overflow-hidden pt-8 sm:pt-14 pb-12 sm:pb-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
-          {/* Dynamic Agricultural Network (Layer 1 Dot Matrix + Layer 2 SVG Contours) */}
-          <AgriculturalNetworkBackground />
+        <section className="relative overflow-hidden pt-8 sm:pt-14 pb-12 sm:pb-20 w-full">
+          {/* Responsive Layered Agricultural Hero Composition */}
+          <AgriculturalHeroBackground />
 
-          {/* Dedicated 3-Zone Hero Container with Collision-Safe Bounds */}
-          <div className="relative z-10 w-full">
-            {/* Peripheral Floating Information System (Safe Flanks: Desktop Only, 0 on Tablet/Mobile) */}
-            <HeroFloatingSystem />
+          {/* Centered Hero Container */}
+          <div className="relative z-10 w-full max-w-4xl mx-auto text-center space-y-6 sm:space-y-8 px-4 sm:px-6">
+            {/* Top Small Badge */}
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xs bg-forest-green-light border-2 border-dark-neutral text-forest-green text-xs sm:text-sm font-black tracking-wide shadow-[2px_2px_0px_#22252A] animate-page-enter">
+              <span className="w-2 h-2 rounded-full bg-forest-green inline-block animate-pulse" />
+              <span>{t('landing.badge')}</span>
+            </div>
 
-            {/* Central Hero Content Protected Safe Zone (z-20: strictly above ambient floating elements) */}
-            <div className="relative z-20 text-center max-w-2xl lg:max-w-lg xl:max-w-xl 2xl:max-w-2xl mx-auto space-y-6 px-4 lg:px-0">
-              {/* Government Badge */}
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xs bg-forest-green-light border-2 border-dark-neutral text-forest-green text-xs sm:text-sm font-black tracking-wide shadow-[2px_2px_0px_#22252A] animate-page-enter">
-                <span>{t('landing.badge')}</span>
-              </div>
+            {/* Main Editorial Hero Heading */}
+            <h1 className="font-heading font-black text-4xl sm:text-6xl md:text-7xl lg:text-[5rem] text-dark-neutral tracking-tight leading-[1.05] uppercase animate-page-enter">
+              <span className="block text-forest-green">{t('landing.hero_title_1')}</span>
+              <span className="block text-dark-neutral">{t('landing.hero_title_2')}</span>
+              <span className="block text-wheat-accent-dark">{t('landing.hero_title_3')}</span>
+            </h1>
 
-              {/* Main Editorial Hero Heading */}
-              <h1 className="font-heading font-black text-4xl sm:text-6xl lg:text-7xl text-dark-neutral tracking-tight leading-[1.08] uppercase animate-page-enter">
-                <span className="block text-forest-green">{t('landing.hero_title_1')}</span>
-                <span className="block">{t('landing.hero_title_2')}</span>
-                <span className="block text-wheat-accent-dark">{t('landing.hero_title_3')}</span>
-              </h1>
+            {/* Supporting Hero Text */}
+            <p className="text-base sm:text-lg md:text-xl text-dark-neutral-muted font-medium max-w-2xl mx-auto leading-relaxed animate-page-enter stagger-1">
+              {t('landing.hero_subtitle')}
+            </p>
 
-              {/* Supporting Hero Text */}
-              <p className="text-base sm:text-xl text-dark-neutral-muted font-medium max-w-2xl mx-auto leading-relaxed animate-page-enter stagger-1">
-                {t('landing.hero_subtitle')}
-              </p>
-
-              {/* CTA Action Buttons */}
-              <div className="pt-3 flex flex-col sm:flex-row items-center justify-center gap-3.5 sm:gap-4 animate-page-enter stagger-2">
-                <Link to="/access" className="w-full sm:w-auto">
-                  <button
-                    type="button"
-                    className="w-full sm:w-auto px-8 py-4 min-h-[52px] rounded-xs bg-forest-green text-white text-base sm:text-lg font-black tracking-wide border-3 border-dark-neutral shadow-brutal hover:-translate-x-[1px] hover:-translate-y-[1px] hover:shadow-brutal-lg active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all duration-micro ease-tactile flex items-center justify-center gap-2 focus-visible:ring-2 focus-visible:ring-dark-neutral focus-visible:outline-none"
-                  >
-                    <span>{t('landing.cta_get_started')}</span>
-                    <ArrowRight className="w-5 h-5" />
-                  </button>
-                </Link>
-
+            {/* CTA Action Buttons */}
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3.5 sm:gap-4 animate-page-enter stagger-2">
+              <Link to="/access" className="w-full sm:w-auto">
                 <button
                   type="button"
-                  onClick={() => scrollToSection('how-it-works')}
-                  className="w-full sm:w-auto px-6 py-4 min-h-[52px] rounded-xs bg-white text-dark-neutral text-sm sm:text-base font-black tracking-wide border-3 border-dark-neutral shadow-brutal-sm hover:-translate-x-[1px] hover:-translate-y-[1px] hover:shadow-brutal active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all duration-micro ease-tactile focus-visible:ring-2 focus-visible:ring-dark-neutral focus-visible:outline-none"
+                  className="w-full sm:w-auto px-8 py-4 min-h-[52px] rounded-xs bg-forest-green text-white text-base sm:text-lg font-black tracking-wide border-3 border-dark-neutral shadow-brutal hover:-translate-x-[1px] hover:-translate-y-[1px] hover:shadow-brutal-lg active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all duration-micro ease-tactile flex items-center justify-center gap-2 focus-visible:ring-2 focus-visible:ring-dark-neutral focus-visible:outline-none cursor-pointer"
                 >
-                  {t('landing.cta_how_it_works')}
+                  <span>{t('landing.cta_get_started')}</span>
+                  <ArrowRight className="w-5 h-5" />
                 </button>
+              </Link>
+
+              <button
+                type="button"
+                onClick={() => scrollToSection('how-it-works')}
+                className="w-full sm:w-auto px-6 py-4 min-h-[52px] rounded-xs bg-white text-dark-neutral text-sm sm:text-base font-black tracking-wide border-3 border-dark-neutral shadow-brutal-sm hover:-translate-x-[1px] hover:-translate-y-[1px] hover:shadow-brutal active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all duration-micro ease-tactile focus-visible:ring-2 focus-visible:ring-dark-neutral focus-visible:outline-none cursor-pointer"
+              >
+                {t('landing.cta_how_it_works')}
+              </button>
+            </div>
+
+            {/* Compact Procurement Journey Indicator */}
+            <div className="pt-4 sm:pt-6 animate-page-enter stagger-3">
+              {/* Desktop & Tablet: Horizontal Flow */}
+              <div className="hidden sm:inline-flex items-center justify-center gap-2 md:gap-3 py-3 px-4 sm:px-6 bg-white/90 border-2 border-dark-neutral rounded-xs shadow-[2px_2px_0px_#22252A] max-w-full overflow-x-auto">
+                {/* 01 FIND CENTRE */}
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-xs font-black text-forest-green">01</span>
+                  <span className="text-xs font-black tracking-wider text-dark-neutral whitespace-nowrap">
+                    {t('landing.journey_step_1', 'FIND CENTRE')}
+                  </span>
+                </div>
+
+                <ArrowRight className="w-3.5 h-3.5 text-dark-neutral-muted shrink-0" />
+
+                {/* 02 BOOK SLOT */}
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-xs font-black text-forest-green">02</span>
+                  <span className="text-xs font-black tracking-wider text-dark-neutral whitespace-nowrap">
+                    {t('landing.journey_step_2', 'BOOK SLOT')}
+                  </span>
+                </div>
+
+                <ArrowRight className="w-3.5 h-3.5 text-dark-neutral-muted shrink-0" />
+
+                {/* 03 VERIFY & WEIGH */}
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-xs font-black text-forest-green">03</span>
+                  <span className="text-xs font-black tracking-wider text-dark-neutral whitespace-nowrap">
+                    {t('landing.journey_step_3', 'VERIFY & WEIGH')}
+                  </span>
+                </div>
+
+                <ArrowRight className="w-3.5 h-3.5 text-dark-neutral-muted shrink-0" />
+
+                {/* 04 PROCUREMENT */}
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-xs font-black text-forest-green">04</span>
+                  <span className="text-xs font-black tracking-wider text-dark-neutral whitespace-nowrap">
+                    {t('landing.journey_step_4', 'PROCUREMENT')}
+                  </span>
+                </div>
+
+                <ArrowRight className="w-3.5 h-3.5 text-dark-neutral-muted shrink-0" />
+
+                {/* 05 DBT PAYMENT */}
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-xs font-black text-forest-green">05</span>
+                  <span className="text-xs font-black tracking-wider text-dark-neutral whitespace-nowrap">
+                    {t('landing.journey_step_5', 'DBT PAYMENT')}
+                  </span>
+                </div>
+              </div>
+
+              {/* Mobile: Compact 2-column or wrapping pill strip */}
+              <div className="sm:hidden flex flex-wrap items-center justify-center gap-1.5 py-2.5 px-3 bg-white/95 border-2 border-dark-neutral rounded-xs shadow-[2px_2px_0px_#22252A] text-left">
+                {[
+                  { num: '01', text: t('landing.journey_step_1', 'FIND CENTRE') },
+                  { num: '02', text: t('landing.journey_step_2', 'BOOK SLOT') },
+                  { num: '03', text: t('landing.journey_step_3', 'VERIFY & WEIGH') },
+                  { num: '04', text: t('landing.journey_step_4', 'PROCUREMENT') },
+                  { num: '05', text: t('landing.journey_step_5', 'DBT PAYMENT') }
+                ].map((st, i, arr) => (
+                  <React.Fragment key={st.num}>
+                    <span className="inline-flex items-center gap-1 text-[11px] font-black text-dark-neutral">
+                      <span className="font-mono text-forest-green font-black">{st.num}</span>
+                      <span>{st.text}</span>
+                    </span>
+                    {i < arr.length - 1 && (
+                      <span className="text-dark-neutral/30 text-xs">→</span>
+                    )}
+                  </React.Fragment>
+                ))}
               </div>
             </div>
           </div>
 
-          {/* Editorial Visual: End-to-End Workflow Diagram */}
-          <div className="relative z-10 mt-12 sm:mt-16 animate-page-enter stagger-3">
+          {/* Visual Bridge to Lower Lifecycle Section */}
+          <div className="relative z-10 mt-14 sm:mt-20 animate-page-enter stagger-3">
             <WorkflowDiagram />
           </div>
         </section>

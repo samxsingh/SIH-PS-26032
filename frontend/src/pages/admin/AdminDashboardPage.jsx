@@ -15,6 +15,7 @@ import DistrictLiveQueuePipeline from '../../components/admin/DistrictLiveQueueP
 import PaymentCommandView from '../../components/admin/PaymentCommandView';
 import ProcurementAnalyticsSection from '../../components/admin/ProcurementAnalyticsSection';
 import CentrePerformanceTable from '../../components/admin/CentrePerformanceTable';
+import OperationalExceptionDesk from '../../components/admin/OperationalExceptionDesk';
 import AuditActivityTimeline from '../../components/admin/AuditActivityTimeline';
 import CentreDetailCommandDrawer from '../../components/admin/CentreDetailCommandDrawer';
 import AdminFarmerDrawer from '../../components/admin/AdminFarmerDrawer';
@@ -22,6 +23,7 @@ import StaffVerificationsTab from '../../components/admin/StaffVerificationsTab'
 
 import LoadingState from '../../components/common/LoadingState';
 import Alert from '../../components/common/Alert';
+import AgriculturalVisualBackground from '../../components/public/AgriculturalVisualBackground';
 import {
   Activity,
   Layers,
@@ -31,7 +33,8 @@ import {
   BarChart3,
   History,
   FileCheck,
-  RefreshCw
+  RefreshCw,
+  ShieldAlert
 } from 'lucide-react';
 
 export const AdminDashboardPage = () => {
@@ -112,19 +115,26 @@ export const AdminDashboardPage = () => {
   const commodityBreakdown = districtOverview?.commodityBreakdown || [];
   const paymentPipeline = districtOverview?.paymentPipeline || {};
   const alerts = districtOverview?.alerts || [];
+  const exceptions = districtOverview?.exceptions || [];
   const recentAuditLogs = districtOverview?.recentAuditLogs || [];
 
   return (
-    <div className="min-h-screen bg-warm-ivory flex flex-col selection:bg-forest-green selection:text-white w-full max-w-full overflow-x-hidden">
-      {/* 1. Admin Header */}
+    <div className="min-h-screen bg-warm-ivory flex flex-col selection:bg-forest-green selection:text-white relative overflow-x-hidden">
+      {/* Contextual Visual Background - DISTRICT mode (data-first, clean contours & matrix, no heavy photos) */}
+      <AgriculturalVisualBackground variant="district" showContours={true} showBotanicalFrame={false} />
+
+      {/* 1. Official Government Navigation Bar */}
       <AdminHeader
+        user={user}
+        district={district}
+        isConnected={isSocketConnected}
         onRefresh={() => fetchDistrictData(false)}
         isRefreshing={isRefreshing}
         alertsCount={alerts.length}
         onToggleAlerts={() => setShowAlertsBanner(!showAlertsBanner)}
       />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-5 min-w-0 max-w-full overflow-x-hidden">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-5 min-w-0 max-w-full overflow-x-hidden relative z-10">
         {/* Error Notification Banner */}
         {errorMsg && (
           <Alert type="error" className="mb-4" onClose={() => setErrorMsg(null)}>
@@ -201,6 +211,19 @@ export const AdminDashboardPage = () => {
           </button>
 
           <button
+            data-testid="tab-exceptions"
+            onClick={() => setActiveTab('EXCEPTIONS')}
+            className={`pb-3 px-3 sm:px-4 text-xs sm:text-sm font-black uppercase tracking-wider transition-all flex items-center gap-1.5 border-b-3 -mb-[2px] whitespace-nowrap ${
+              activeTab === 'EXCEPTIONS'
+                ? 'border-forest-green text-forest-green bg-white rounded-t-xs'
+                : 'border-transparent text-dark-neutral-muted hover:text-dark-neutral'
+            }`}
+          >
+            <ShieldAlert className="w-4 h-4 text-amber-600" />
+            <span>{t('admin.tab_exceptions', 'Exception Desk')} ({exceptions.length})</span>
+          </button>
+
+          <button
             data-testid="tab-verifications"
             onClick={() => setActiveTab('VERIFICATIONS')}
             className={`pb-3 px-3 sm:px-4 text-xs sm:text-sm font-black uppercase tracking-wider transition-all flex items-center gap-1.5 border-b-3 -mb-[2px] whitespace-nowrap ${
@@ -268,7 +291,12 @@ export const AdminDashboardPage = () => {
               onSelectCentre={(c) => setSelectedCentre(c)}
             />
 
-            {/* 8. Audit Activity Timeline */}
+            {/* 8. Operational Exception Desk */}
+            <OperationalExceptionDesk
+              exceptions={exceptions}
+            />
+
+            {/* 9. Audit Activity Timeline */}
             <AuditActivityTimeline
               auditLogs={recentAuditLogs}
             />
@@ -320,7 +348,18 @@ export const AdminDashboardPage = () => {
         )}
 
         {/* ========================================================================= */}
-        {/* VIEW 5: STAFF & CENTRE VERIFICATIONS (PRESERVED)                          */}
+        {/* VIEW 5: DEDICATED EXCEPTION DESK                                          */}
+        {/* ========================================================================= */}
+        {activeTab === 'EXCEPTIONS' && (
+          <div className="space-y-6">
+            <OperationalExceptionDesk
+              exceptions={exceptions}
+            />
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* VIEW 6: STAFF & CENTRE VERIFICATIONS (PRESERVED)                          */}
         {/* ========================================================================= */}
         {activeTab === 'VERIFICATIONS' && (
           <StaffVerificationsTab />

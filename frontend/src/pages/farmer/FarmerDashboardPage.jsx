@@ -13,6 +13,8 @@ import FarmerProfileModal from '../../components/farmer/FarmerProfileModal';
 import GoogleCentreMap from '../../components/farmer/GoogleCentreMap';
 import CentreDetailsPanel from '../../components/farmer/CentreDetailsPanel';
 import ProgressLadder from '../../components/common/ProgressLadder';
+import AgriculturalVisualBackground from '../../components/public/AgriculturalVisualBackground';
+import { getLocalizedStage, getLocalizedCrop } from '../../utils/formatters';
 import {
   Calendar,
   MapPin,
@@ -70,10 +72,13 @@ export const FarmerDashboardPage = () => {
         const active = res.data.find(
           (b) => !['COMPLETED', 'PAYMENT_COMPLETED', 'CANCELLED', 'REJECTED'].includes(b.operationalStatus) && b.bookingStatus !== 'COMPLETED'
         ) || res.data[0];
-        if (active) setActiveBooking(active);
+        setActiveBooking(active || null);
+      } else {
+        setActiveBooking(null);
       }
     } catch (err) {
       // Handled gracefully
+      setActiveBooking(null);
     } finally {
       setIsLoadingBooking(false);
     }
@@ -86,6 +91,12 @@ export const FarmerDashboardPage = () => {
       fetchActiveBooking();
     }
   });
+
+  // Clear booking on user change
+  useEffect(() => {
+    setActiveBooking(null);
+    fetchActiveBooking();
+  }, [user?.id || user?._id]);
 
   useEffect(() => {
     const fetchCentresAndMandis = async () => {
@@ -111,7 +122,6 @@ export const FarmerDashboardPage = () => {
       }
     };
 
-    fetchActiveBooking();
     fetchCentresAndMandis();
   }, []);
 
@@ -155,10 +165,13 @@ export const FarmerDashboardPage = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-warm-ivory flex flex-col selection:bg-forest-green selection:text-white font-sans">
+    <div className="min-h-screen bg-warm-ivory flex flex-col selection:bg-forest-green selection:text-white font-sans relative overflow-x-hidden">
+      {/* Contextual Agricultural Visual Background - FARM mode */}
+      <AgriculturalVisualBackground variant="farm" position="left" intensity="soft" showBotanicalFrame={true} />
+
       <Navbar />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 animate-page-enter">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 animate-page-enter relative z-10">
         {/* Top Header with Government Greeting and Role Status */}
         <PageHeader
           title={`${t('farmer.greeting', 'Namaste')}, ${user?.fullName || 'Kisan Bandhu'} 👋`}
@@ -205,19 +218,19 @@ export const FarmerDashboardPage = () => {
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/15 pb-2.5">
                 <div className="flex items-center gap-2.5 flex-wrap">
                   <span className="text-[11px] font-black uppercase tracking-wider text-dark-neutral bg-wheat-accent px-2.5 py-0.5 rounded-xs border border-dark-neutral shadow-[1px_1px_0px_#22252A]">
-                    ACTIVE PROCUREMENT JOURNEY
+                    {t('farmer.active_journey', 'ACTIVE PROCUREMENT JOURNEY')}
                   </span>
-                  <span className="text-xs font-mono font-bold text-white/90">
-                    Token: <strong className="text-wheat-accent tracking-wide">{activeBooking.tokenNumber || 'TOK-TEST-55317189'}</strong>
-                  </span>
+                  <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-white text-dark-neutral border-2 border-dark-neutral rounded-xs shadow-[3px_3px_0px_#22252A]">
+                    <span className="text-[11px] font-black uppercase tracking-widest text-dark-neutral-muted bg-sand-muted px-1.5 py-0.5 border border-dark-neutral/20">{t('farmer.token_badge', 'TOKEN')}</span>
+                    <span className="text-lg sm:text-xl font-mono font-black text-forest-green tracking-wider">{activeBooking.tokenNumber || '—'}</span>
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-white/70 font-medium">Current Status:</span>
+                  <span className="text-xs text-white/70 font-medium">{t('common.status', 'Current Status')}:</span>
                   <span className="text-xs font-bold uppercase tracking-wide bg-white/15 text-white px-2.5 py-0.5 rounded-xs border border-white/25">
                     {(() => {
                       const st = (activeBooking.operationalStatus || activeBooking.state || 'WAITING').toUpperCase();
-                      const match = CANONICAL_STAGES.find((s) => s.key === st);
-                      return match ? match.label : st.replace(/_/g, ' ');
+                      return getLocalizedStage(st, t);
                     })()}
                   </span>
                 </div>
@@ -250,9 +263,9 @@ export const FarmerDashboardPage = () => {
                     <span className="text-white/40">·</span>
                     <span>{activeBooking.timeWindow || '09:00–10:00 AM'}</span>
                     <span className="text-white/40">·</span>
-                    <span>{activeBooking.cropType || 'Wheat'}</span>
+                    <span>{getLocalizedCrop(activeBooking.cropType || 'Wheat', t)}</span>
                     <span className="text-white/40">·</span>
-                    <span>{activeBooking.estimatedQuantityQuintals || activeBooking.quantityQuintals || 50} Qtl</span>
+                    <span>{activeBooking.estimatedQuantityQuintals || activeBooking.quantityQuintals || 50} {t('common.quintals', 'Qtl')}</span>
                   </div>
                 </div>
 
@@ -406,17 +419,25 @@ export const FarmerDashboardPage = () => {
               {/* 5. BOTTOM: Lightweight 10-Stage Procurement Progress Stepper */}
               <div className="pt-2.5 border-t border-white/15">
                 <div className="flex items-center justify-between text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-wheat-accent mb-1.5">
-                  <span>PROCUREMENT PROGRESS</span>
+                  <span>{t('farmer.procurement_progress', 'PROCUREMENT PROGRESS')}</span>
                   <span className="font-mono text-white/80">
-                    STAGE {(() => {
-                      const st = (activeBooking.operationalStatus || activeBooking.state || 'WAITING').toUpperCase();
-                      const matchIdx = CANONICAL_STAGES.findIndex((s) => s.key === st);
-                      return (matchIdx >= 0 ? matchIdx : 1) + 1;
-                    })()} OF 10
+                    {t('farmer.stage_counter', {
+                      defaultValue: 'STAGE {{current}} OF {{total}}',
+                      current: (() => {
+                        const st = (activeBooking.operationalStatus || activeBooking.state || 'WAITING').toUpperCase();
+                        const matchIdx = CANONICAL_STAGES.findIndex((s) => s.key === st);
+                        return (matchIdx >= 0 ? matchIdx : 1) + 1;
+                      })(),
+                      total: 10
+                    })}
                   </span>
                 </div>
                 <ProgressLadder
-                  stages={CANONICAL_STAGES}
+                  stages={CANONICAL_STAGES.map((s) => ({
+                    ...s,
+                    label: getLocalizedStage(s.key, t),
+                    short: getLocalizedStage(s.key, t)
+                  }))}
                   currentIndex={(() => {
                     const st = (activeBooking.operationalStatus || activeBooking.state || 'WAITING').toUpperCase();
                     const matchIdx = CANONICAL_STAGES.findIndex((s) => s.key === st);

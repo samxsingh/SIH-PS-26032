@@ -21,9 +21,9 @@ export const OperationalHeader = ({
 }) => {
   const { t } = useTranslation();
 
-  const centreName = centreProfile?.name || 'Dubagga Procurement Centre';
+  const centreName = centreProfile?.name || 'Krishi Seva Procurement Centre — Gomti Nagar';
   const centreType = centreProfile?.centreType || 'PROCUREMENT_CENTRE';
-  const parentMandi = centreProfile?.mandiName || centreProfile?.mandi?.name || 'Dubagga Regulated Mandi';
+  const parentMandi = centreProfile?.mandiName || centreProfile?.mandi?.name || 'Gomti Nagar Regulated APMC Mandi';
   const district = centreProfile?.district || 'Lucknow';
   const state = centreProfile?.state || 'Uttar Pradesh';
   const centreCode = centreProfile?.centreId || centreProfile?.centreCode || 'LKO_GOM01';

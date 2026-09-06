@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import apiClient from '../../services/apiClient';
+import { useAuth } from '../../contexts/AuthContext';
 import { Bell, CheckCheck, X } from 'lucide-react';
 
 export const NotificationBell = () => {
@@ -8,6 +9,8 @@ export const NotificationBell = () => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
+
+  const { user } = useAuth();
 
   const fetchNotifications = async () => {
     try {
@@ -22,10 +25,12 @@ export const NotificationBell = () => {
   };
 
   useEffect(() => {
+    setNotifications([]);
+    setUnreadCount(0);
     fetchNotifications();
     const interval = setInterval(fetchNotifications, 10000); // 10s poll
     return () => clearInterval(interval);
-  }, []);
+  }, [user?.id || user?._id]);
 
   const handleMarkAsRead = async (id) => {
     try {

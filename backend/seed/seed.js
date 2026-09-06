@@ -390,7 +390,7 @@ const seedData = async () => {
       for (const centre of centres) {
         for (let i = 0; i < timeWindows.length; i++) {
           const tw = timeWindows[i];
-          const isFullDemo = i === 2 && centre.centreCode === 'AST02';
+          const isFullDemo = i === 2 && centre.centreCode === 'LKO_ALI02';
           const bookedCount = isFullDemo ? 15 : (i % 3) * 2;
           const status = bookedCount >= 15 ? 'FULL' : 'AVAILABLE';
 

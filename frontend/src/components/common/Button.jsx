@@ -20,7 +20,7 @@ export const Button = React.forwardRef(
     },
     ref
   ) => {
-    const baseStyles = 'inline-flex items-center justify-center font-bold tracking-tight rounded-md border-2 border-dark-neutral transition-all duration-micro ease-tactile focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dark-neutral focus-visible:ring-offset-2 focus-visible:ring-offset-warm-ivory disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none min-h-touch select-none';
+    const baseStyles = 'inline-flex items-center justify-center font-bold tracking-tight rounded-md border-2 border-dark-neutral transition-all duration-micro ease-tactile focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dark-neutral focus-visible:ring-offset-2 focus-visible:ring-offset-warm-ivory disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none min-h-touch select-none text-center max-w-full';
 
     const variants = {
       primary: 'bg-forest-green text-white shadow-brutal-sm hover:-translate-x-[1px] hover:-translate-y-[1px] hover:shadow-brutal active:translate-x-[2px] active:translate-y-[2px] active:shadow-none',
@@ -57,7 +57,7 @@ export const Button = React.forwardRef(
         {isLoading ? (
           <>
             <Loader2 className="w-4 h-4 mr-2 animate-spin text-current shrink-0" />
-            <span>{loadingText || (typeof children === 'string' ? (children.endsWith('...') ? children : `${children}...`) : 'Processing...')}</span>
+            <span className="truncate">{loadingText || (typeof children === 'string' ? (children.endsWith('...') ? children : `${children}...`) : 'Processing...')}</span>
           </>
         ) : (
           children

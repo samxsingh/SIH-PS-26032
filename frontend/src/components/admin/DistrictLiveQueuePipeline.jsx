@@ -2,6 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ListOrdered, User, MapPin, Eye, CheckCircle2, Clock } from 'lucide-react';
 import Badge from '../common/Badge';
+import { getLocalizedStage } from '../../utils/formatters';
 
 export const DistrictLiveQueuePipeline = ({
   queueFunnel = {},
@@ -12,16 +13,16 @@ export const DistrictLiveQueuePipeline = ({
   const [selectedStageFilter, setSelectedStageFilter] = React.useState(null);
 
   const stages = [
-    { key: 'BOOKED', label: '1. Booked', count: queueFunnel.BOOKED || 0, color: 'bg-emerald-50 text-emerald-900 border-emerald-400' },
-    { key: 'WAITING', label: '2. Waiting', count: queueFunnel.WAITING || 0, color: 'bg-amber-100 text-amber-900 border-amber-400' },
-    { key: 'CALLED', label: '3. Called', count: queueFunnel.CALLED || 0, color: 'bg-blue-100 text-blue-900 border-blue-400' },
-    { key: 'ARRIVED', label: '4. Arrived', count: queueFunnel.ARRIVED || 0, color: 'bg-indigo-100 text-indigo-900 border-indigo-400' },
-    { key: 'VERIFICATION', label: '5. Verify', count: queueFunnel.VERIFICATION || 0, color: 'bg-purple-100 text-purple-900 border-purple-400' },
-    { key: 'QUALITY_CHECK', label: '6. Assaying', count: queueFunnel.QUALITY_CHECK || 0, color: 'bg-yellow-100 text-yellow-950 border-yellow-400' },
-    { key: 'WEIGHING', label: '7. Weighing', count: queueFunnel.WEIGHING || 0, color: 'bg-orange-100 text-orange-950 border-orange-400' },
-    { key: 'PROCUREMENT_CONFIRMED', label: '8. Confirmed', count: queueFunnel.PROCUREMENT_CONFIRMED || 0, color: 'bg-emerald-100 text-emerald-950 border-emerald-400' },
-    { key: 'PAYMENT_PROCESSING', label: '9. Payment Proc', count: queueFunnel.PAYMENT_PROCESSING || 0, color: 'bg-teal-100 text-teal-950 border-teal-400' },
-    { key: 'PAYMENT_COMPLETED', label: '10. Settled', count: queueFunnel.PAYMENT_COMPLETED || 0, color: 'bg-forest-green text-white border-forest-green' }
+    { key: 'BOOKED', label: `1. ${t('lifecycle.booked', 'Booked')}`, count: queueFunnel.BOOKED || 0, color: 'bg-emerald-50 text-emerald-900 border-emerald-400' },
+    { key: 'WAITING', label: `2. ${t('lifecycle.waiting', 'Waiting')}`, count: queueFunnel.WAITING || 0, color: 'bg-amber-100 text-amber-900 border-amber-400' },
+    { key: 'CALLED', label: `3. ${t('lifecycle.called', 'Called')}`, count: queueFunnel.CALLED || 0, color: 'bg-blue-100 text-blue-900 border-blue-400' },
+    { key: 'ARRIVED', label: `4. ${t('lifecycle.arrived', 'Arrived')}`, count: queueFunnel.ARRIVED || 0, color: 'bg-indigo-100 text-indigo-900 border-indigo-400' },
+    { key: 'VERIFICATION', label: `5. ${t('lifecycle.verification', 'Verify')}`, count: queueFunnel.VERIFICATION || 0, color: 'bg-purple-100 text-purple-900 border-purple-400' },
+    { key: 'QUALITY_CHECK', label: `6. ${t('lifecycle.quality_check', 'Assaying')}`, count: queueFunnel.QUALITY_CHECK || 0, color: 'bg-yellow-100 text-yellow-950 border-yellow-400' },
+    { key: 'WEIGHING', label: `7. ${t('lifecycle.weighing', 'Weighing')}`, count: queueFunnel.WEIGHING || 0, color: 'bg-orange-100 text-orange-950 border-orange-400' },
+    { key: 'PROCUREMENT_CONFIRMED', label: `8. ${t('lifecycle.confirmed', 'Confirmed')}`, count: queueFunnel.PROCUREMENT_CONFIRMED || 0, color: 'bg-emerald-100 text-emerald-950 border-emerald-400' },
+    { key: 'PAYMENT_PROCESSING', label: `9. ${t('lifecycle.payment_processing', 'Payment Proc')}`, count: queueFunnel.PAYMENT_PROCESSING || 0, color: 'bg-teal-100 text-teal-950 border-teal-400' },
+    { key: 'PAYMENT_COMPLETED', label: `10. ${t('lifecycle.payment_completed', 'Settled')}`, count: queueFunnel.PAYMENT_COMPLETED || 0, color: 'bg-forest-green text-white border-forest-green' }
   ];
 
   const displayedQueue = selectedStageFilter
@@ -121,7 +122,7 @@ export const DistrictLiveQueuePipeline = ({
                   </td>
                   <td className="p-2.5">
                     <span className="font-black text-[10px] px-2 py-0.5 rounded-xs border border-dark-neutral bg-white uppercase">
-                      {f.state?.replace(/_/g, ' ')}
+                      {getLocalizedStage(f.state, t)}
                     </span>
                   </td>
                   <td className="p-2.5 text-right">

@@ -168,9 +168,7 @@ const login = async (req, res, next) => {
 
     const isAllowedAdminEmail = ['admin@agrinexus.demo', 'admin@agrinexus.gov.in', (process.env.ADMIN_EMAIL || '').toLowerCase()].filter(Boolean).includes(identifier.toLowerCase());
 
-    const lookupEmails = identifier.toLowerCase() === 'sehore.centre@agrinexus.demo'
-      ? ['sehore.centre@agrinexus.demo', 'gomtinagar.centre@agrinexus.demo']
-      : [identifier.toLowerCase()];
+    const lookupEmails = [identifier.toLowerCase()];
 
     let user = null;
     try {

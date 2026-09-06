@@ -131,8 +131,11 @@ export const CentreHealthSection = ({ centres = [], onSelectCentre, selectedCent
                   </Badge>
                 </div>
 
-                <div className="text-[11px] text-dark-neutral-muted mb-2">
-                  <span className="font-bold">Parent:</span> {c.mandi?.name || 'Dubagga Naveen Mandi'}
+                <div className="text-[11px] text-dark-neutral-muted mb-2 flex items-center justify-between">
+                  <span><strong className="text-dark-neutral">{c.tehsil || 'Lucknow Sadar'}</strong></span>
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 bg-warm-ivory border border-dark-neutral/30 rounded-xs">
+                    {c.currentBottleneck && c.currentBottleneck !== 'None' ? `Bottleneck: ${c.currentBottleneck}` : 'Flow: Optimal'}
+                  </span>
                 </div>
 
                 {/* Capacity Progress Bar */}

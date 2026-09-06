@@ -85,6 +85,7 @@ app.use('/api/slots', slotRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/queue', queueRoutes);
 app.use('/api/procurements', procurementRoutes);
+app.use('/api/procurement', procurementRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin', adminRoutes);

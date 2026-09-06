@@ -48,7 +48,7 @@ const staffProvisionSchema = Joi.object({
     'string.empty': 'Assigned procurement centre ID is required'
   }),
   district: Joi.string().required(),
-  state: Joi.string().default('Madhya Pradesh')
+  state: Joi.string().default('Uttar Pradesh')
 });
 
 const loginSchema = Joi.object({

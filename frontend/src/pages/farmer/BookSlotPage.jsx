@@ -13,6 +13,7 @@ import Modal from '../../components/common/Modal';
 import Alert from '../../components/common/Alert';
 import LoadingState from '../../components/common/LoadingState';
 import ErrorState from '../../components/common/ErrorState';
+import AgriculturalVisualBackground from '../../components/public/AgriculturalVisualBackground';
 import {
   Calendar,
   Clock,
@@ -149,10 +150,13 @@ export const BookSlotPage = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-warm-ivory flex flex-col selection:bg-forest-green selection:text-white font-sans">
+    <div className="min-h-screen bg-warm-ivory flex flex-col selection:bg-forest-green selection:text-white font-sans relative overflow-x-hidden">
+      {/* Contextual Visual Background - FARM mode (subtle) */}
+      <AgriculturalVisualBackground variant="farm" position="left" intensity="subtle" showBotanicalFrame={true} />
+
       <Navbar />
 
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 animate-page-enter">
+      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 animate-page-enter relative z-10">
         <PageHeader
           title={t('farmer.select_slot_title', 'Book a Delivery Slot')}
           subtitle={t('farmer.select_slot_subtitle', 'Choose your preferred date, crop commodity, and reserved intake arrival window')}
@@ -300,7 +304,10 @@ export const BookSlotPage = () => {
                     <button
                       key={d.dateStr}
                       type="button"
-                      onClick={() => setSelectedDate(d.dateStr)}
+                      onClick={() => {
+                        setSelectedDate(d.dateStr);
+                        setSelectedSlot(null);
+                      }}
                       className={`px-4 py-3 rounded-xs border-2 border-dark-neutral text-center transition-all flex-shrink-0 min-w-[110px] focus:outline-none cursor-pointer ${
                         selectedDate === d.dateStr
                           ? 'bg-forest-green text-white font-black shadow-brutal-sm -translate-y-0.5'
@@ -322,11 +329,17 @@ export const BookSlotPage = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {slots.map((slot) => {
                       const isFull = slot.status === 'FULL' || slot.bookedFarmersCount >= slot.maxFarmersAllowed;
-                      const isSelected = selectedSlot && (selectedSlot._id === slot._id || selectedSlot.id === slot.id || selectedSlot.slotId === slot.slotId);
+                      const slotKey = slot.slotId || slot._id || slot.id || slot.timeWindow;
+                      const isSelected = selectedSlot && (
+                        (selectedSlot.slotId && slot.slotId && selectedSlot.slotId === slot.slotId) ||
+                        (selectedSlot._id && slot._id && selectedSlot._id === slot._id) ||
+                        (selectedSlot.id && slot.id && selectedSlot.id === slot.id) ||
+                        (selectedSlot.timeWindow === slot.timeWindow)
+                      );
 
                       return (
                         <button
-                          key={slot.slotId || slot._id}
+                          key={slotKey}
                           type="button"
                           disabled={isFull}
                           onClick={() => setSelectedSlot(slot)}

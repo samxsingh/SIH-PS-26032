@@ -26,6 +26,15 @@ export const GoogleMapWrapper = ({
   const routePolylineRef = useRef(null);
   const selectionMarkerRef = useRef(null);
 
+  const onSelectCentreRef = useRef(onSelectCentre);
+  const onSelectMandiRef = useRef(onSelectMandi);
+  useEffect(() => {
+    onSelectCentreRef.current = onSelectCentre;
+  }, [onSelectCentre]);
+  useEffect(() => {
+    onSelectMandiRef.current = onSelectMandi;
+  }, [onSelectMandi]);
+
   const [mapEngine, setMapEngine] = useState('LOADING'); // 'GOOGLE' | 'LEAFLET' | 'LOADING'
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
@@ -215,7 +224,7 @@ export const GoogleMapWrapper = ({
         });
 
         marker.addListener('click', () => {
-          if (onSelectCentre) onSelectCentre(centre);
+          if (onSelectCentreRef.current) onSelectCentreRef.current(centre);
           infoWindow.open(gMap, marker);
         });
 
@@ -242,7 +251,7 @@ export const GoogleMapWrapper = ({
         });
 
         marker.addListener('click', () => {
-          if (onSelectMandi) onSelectMandi(mandi);
+          if (onSelectMandiRef.current) onSelectMandiRef.current(mandi);
         });
 
         mandiMarkersRef.current[mandi._id || mandi.id || mandi.mandiCode] = marker;
@@ -253,7 +262,7 @@ export const GoogleMapWrapper = ({
       // Cleanup
       googleMapInstanceRef.current = null;
     };
-  }, [mapEngine, centres, mandis, userLocation, locationMode, interactiveSelect, onSelectCentre, onSelectMandi]);
+  }, [mapEngine, centres, mandis, userLocation, locationMode, interactiveSelect]);
 
   // Smooth pan on selectedCentre change in Google Maps
   useEffect(() => {
@@ -347,7 +356,7 @@ export const GoogleMapWrapper = ({
 
             const marker = L.marker([lat, lon], { icon: centreIcon }).addTo(map);
             marker.on('click', () => {
-              if (onSelectCentre) onSelectCentre(centre);
+              if (onSelectCentreRef.current) onSelectCentreRef.current(centre);
             });
             const distance = centre.distanceKm != null 
               ? centre.distanceKm 
@@ -406,7 +415,7 @@ export const GoogleMapWrapper = ({
             `);
 
             marker.on('click', () => {
-              if (onSelectMandi) onSelectMandi(mandi);
+              if (onSelectMandiRef.current) onSelectMandiRef.current(mandi);
             });
           });
 
@@ -446,7 +455,7 @@ export const GoogleMapWrapper = ({
         leafletMapRef.current = null;
       }
     };
-  }, [mapEngine, centres, mandis, userLocation, locationMode, interactiveSelect, selectedCentre, showRoute, onSelectMandi]);
+  }, [mapEngine, centres, mandis, userLocation, locationMode, interactiveSelect, showRoute]);
 
   // Smooth pan on selectedCentre change in Leaflet
   useEffect(() => {

@@ -583,6 +583,34 @@ async function runPhase15ReliabilitySuite() {
   }
   console.log('================================================================\n');
 
+  // Cleanup all temporary test artefacts created during test run
+  try {
+    const testBookings = await Booking.find({
+      $or: [
+        { bookingReference: /^BK-TEST-/ },
+        { tokenNumber: /^TOK-TEST-/ }
+      ]
+    }).lean();
+    const testBookingIds = testBookings.map(b => b._id);
+    await QueueEntry.deleteMany({
+      $or: [
+        { bookingId: { $in: testBookingIds } },
+        { tokenNumber: /^TOK-TEST-/ },
+        { sequenceNumber: { $in: [8888, 9999] } }
+      ]
+    });
+    await Procurement.deleteMany({ bookingId: { $in: testBookingIds } });
+    await PaymentStatus.deleteMany({ bookingId: { $in: testBookingIds } });
+    await Booking.deleteMany({
+      $or: [
+        { bookingReference: /^BK-TEST-/ },
+        { tokenNumber: /^TOK-TEST-/ }
+      ]
+    });
+  } catch (cleanErr) {
+    console.warn('[Phase 15 Test] Cleanup warning:', cleanErr.message);
+  }
+
   await mongoose.disconnect();
 
   if (passedTests !== totalTests) {

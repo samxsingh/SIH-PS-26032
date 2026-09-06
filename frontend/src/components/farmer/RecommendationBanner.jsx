@@ -73,7 +73,7 @@ export const RecommendationBanner = ({
         <div className="lg:col-span-2">
           <div className="flex items-center gap-2 flex-wrap mb-1">
             <span className="text-[10px] font-black uppercase tracking-wider text-forest-green bg-white border border-dark-neutral px-2 py-0.5 rounded-xs">
-              {centre.centreCode || 'SEH01'}
+              {centre.centreCode || 'LKO_GOM01'}
             </span>
             {isVerified ? (
               <span className="text-[10px] font-black uppercase text-green-800 bg-green-100 border border-green-700 px-2 py-0.5 rounded-xs inline-flex items-center gap-1">
