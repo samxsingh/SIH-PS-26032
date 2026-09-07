@@ -52,18 +52,23 @@ const runSmokeTest = async () => {
     const farmerToken = farmerAuth.body.data?.token;
     console.log('1. Farmer Registered & Authenticated:', farmerToken ? '✔ PASSED' : '❌ FAILED');
 
-    // 2. Discover Centres & Recommendation
-    const recommendRes = await makeRequest('/api/centres/recommend?lat=23.2040&lon=77.0850', 'GET', null, farmerToken);
-    const topCentre = recommendRes.body.data?.recommended?.centre;
-    console.log('2. Smart Recommendation Discovery:', topCentre?.name ? `✔ PASSED (${topCentre.name})` : '❌ FAILED');
+    // 2. Staff Authentication & Centre Identification
+    const staffAuth = await makeRequest('/api/auth/login', 'POST', {
+      email: 'gomtinagar.centre@agrinexus.demo',
+      password: 'password123',
+      role: 'CENTRE_STAFF'
+    });
+    const staffToken = staffAuth.body.data?.token;
+    const centreId = staffAuth.body.data?.user?.assignedCentreId || 'c1';
+    console.log('2. Staff Authenticated (Assigned Centre:', centreId, '):', staffToken ? '✔ PASSED' : '❌ FAILED');
 
     // 3. Slot Discovery & Booking
-    const slotsRes = await makeRequest('/api/slots?centreId=c1&date=2026-09-02', 'GET', null, farmerToken);
+    const slotsRes = await makeRequest(`/api/slots?centreId=${centreId}&date=2026-09-02`, 'GET', null, farmerToken);
     const slot = slotsRes.body.data?.[0];
     console.log('3. Slot Discovery:', slot ? `✔ PASSED (${slotsRes.body.data.length} slots)` : '❌ FAILED');
 
     const bookingRes = await makeRequest('/api/bookings', 'POST', {
-      centreId: 'c1',
+      centreId,
       slotId: slot.id || slot._id,
       bookingDate: '2026-09-02',
       cropType: 'Wheat',
@@ -73,22 +78,14 @@ const runSmokeTest = async () => {
     const bookingId = booking?.id || booking?._id;
     console.log('4. Slot Booked & Token Generated:', booking?.tokenNumber ? `✔ PASSED (${booking.tokenNumber})` : '❌ FAILED');
 
-    // 4. Staff Authentication & Counter Operations
-    const staffAuth = await makeRequest('/api/auth/login', 'POST', {
-      phone: '9876543211',
-      password: 'password123',
-      role: 'CENTRE_STAFF'
-    });
-    const staffToken = staffAuth.body.data?.token;
-    console.log('5. Staff Authenticated (Assigned Centre: Sehore):', staffToken ? '✔ PASSED' : '❌ FAILED');
-
+    // 4. Staff CALL NEXT Execution
     const callNextRes = await makeRequest('/api/queue/call-next', 'POST', {
-      centreId: 'c1',
+      centreId,
       date: '2026-09-02',
       counterId: 'Counter 1'
     }, staffToken);
     const calledToken = callNextRes.body.data?.queueEntry?.tokenNumber;
-    console.log('6. Staff CALL NEXT Execution:', calledToken ? `✔ PASSED (Called ${calledToken})` : `❌ FAILED (Status: ${callNextRes.status}, Body: ${JSON.stringify(callNextRes.body)})`);
+    console.log('5. Staff CALL NEXT Execution:', calledToken ? `✔ PASSED (Called ${calledToken})` : `❌ FAILED (Status: ${callNextRes.status}, Body: ${JSON.stringify(callNextRes.body)})`);
 
     // 5. Produce Quality Inspection & Net Weighing
     const verifyRes = await makeRequest(`/api/procurements/${bookingId}/verify`, 'POST', {

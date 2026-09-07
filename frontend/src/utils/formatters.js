@@ -46,3 +46,28 @@ export const getLocalizedCrop = (cropName, t) => {
 
   return raw;
 };
+
+/**
+ * Authoritative Government MSP policy rate lookup for client components
+ * Department of Consumer Affairs / Ministry of Agriculture
+ */
+export const getMspRateForCrop = (cropType) => {
+  const norm = String(cropType || '').trim().toLowerCase();
+  switch (norm) {
+    case 'paddy':
+    case 'dhan':
+      return 2300;
+    case 'mustard':
+    case 'sarson':
+      return 5650;
+    case 'pulses':
+    case 'dal':
+    case 'dalhan':
+      return 6600;
+    case 'wheat':
+    case 'gehun':
+    default:
+      return 2275;
+  }
+};
+

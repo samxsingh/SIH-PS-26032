@@ -2,7 +2,9 @@ const Booking = require('../models/Booking');
 const Slot = require('../models/Slot');
 const ProcurementCentre = require('../models/ProcurementCentre');
 const QueueEntry = require('../models/QueueEntry');
+const User = require('../models/User');
 const { generateTokenNumber } = require('./tokenService');
+const { dispatchNotification } = require('./notificationService');
 
 // In-memory fallback stores if MongoDB is offline during test runner execution
 const inMemoryBookings = new Map();
@@ -404,6 +406,26 @@ const createBooking = async ({ farmerId, centreId, slotId, cropType, estimatedQu
       state: 'WAITING',
       createdAt: new Date()
     });
+  }
+
+  // 9. Dispatch Non-blocking Notification to Farmer
+  try {
+    let farmerUser = null;
+    try {
+      farmerUser = await User.findById(farmerId).select('phone fullName');
+    } catch (uErr) {
+      // ignore
+    }
+    const farmerIdStr = farmerId?.toString ? farmerId.toString() : farmerId;
+    dispatchNotification({
+      userId: farmerIdStr,
+      phone: farmerUser?.phone,
+      title: 'Procurement Slot Confirmed',
+      message: `Your delivery slot for ${cropType || 'Wheat'} is confirmed for ${slot.date} (${slot.timeWindow}). Token: ${tokenNumber}.`,
+      event: 'SLOT_CONFIRMED'
+    });
+  } catch (notifErr) {
+    console.warn('[Booking Service] Notification dispatch warning:', notifErr.message);
   }
 
   return newBooking;

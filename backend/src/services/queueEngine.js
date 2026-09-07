@@ -5,6 +5,7 @@ const PaymentStatus = require('../models/PaymentStatus');
 const ProcurementCentre = require('../models/ProcurementCentre');
 const { getTodayIST } = require('../utils/dateUtils');
 const { logQueueAction } = require('./auditService');
+const { dispatchNotification } = require('./notificationService');
 const { inMemoryQueueEntries, inMemoryBookings } = require('./bookingService');
 
 // Explicit State Machine Transition Map (Canonical 10-Stage & Backward Compatible)
@@ -150,6 +151,18 @@ const callNextFarmer = async ({ centreId, queueDate, staffUser, counterId = 'Cou
   };
 
   broadcastQueueEvent(io, centreId, farmerIdStr, 'queue:called', payload);
+
+  // Dispatch In-App & Simulated SMS Notification to Farmer
+  if (farmerIdStr) {
+    dispatchNotification({
+      userId: farmerIdStr,
+      phone: nextEntry.farmerId?.phone,
+      title: 'Your Token is Called',
+      message: `Token ${nextEntry.tokenNumber} called! Please proceed to ${counterId || 'Counter 1'} immediately with your vehicle and ID proof.`,
+      event: 'TOKEN_CALLED',
+      io
+    });
+  }
 
   return nextEntry;
 };
@@ -378,6 +391,64 @@ const transitionQueueState = async ({ queueEntryId, targetState, staffUser, coun
   };
 
   broadcastQueueEvent(io, centreIdStr, farmerIdStr, `queue:${targetState.toLowerCase()}`, broadcastPayload);
+
+  // Dispatch In-App & SMS notification to farmer on milestone transitions
+  if (farmerIdStr) {
+    const notifMap = {
+      ARRIVED: {
+        title: 'Arrival Verified at Gate',
+        message: 'Your arrival at the procurement centre has been verified. Proceed into the inspection bay.',
+        event: 'ARRIVED'
+      },
+      VERIFICATION: {
+        title: 'Document Verification Started',
+        message: 'Your farmer identity and land quota records are currently being checked by the intake officer.',
+        event: 'VERIFICATION'
+      },
+      QUALITY_CHECK: {
+        title: 'Quality Assaying in Progress',
+        message: `Your ${queueEntry.bookingId?.cropType || 'crop'} lot is being tested for moisture and cleanliness.`,
+        event: 'QUALITY_CHECK'
+      },
+      WEIGHING: {
+        title: 'Produce Weighed at Weighbridge',
+        message: 'Weighbridge gross and tare records are being certified.',
+        event: 'WEIGHING'
+      },
+      PROCUREMENT_CONFIRMED: {
+        title: 'Procurement Confirmed & Receipt Issued',
+        message: `Procurement confirmed for Token ${queueEntry.tokenNumber}! Official digital receipt generated.`,
+        event: 'PROCUREMENT_CONFIRMED'
+      },
+      PAYMENT_PROCESSING: {
+        title: 'Payment Processing (DBT)',
+        message: 'Your procurement MSP settlement voucher has been submitted to the DBT payment system.',
+        event: 'PAYMENT_PROCESSING'
+      },
+      PAYMENT_COMPLETED: {
+        title: 'MSP Payment Credited (DBT)',
+        message: `Payment transfer completed for Token ${queueEntry.tokenNumber}. Funds credited to your verified bank account.`,
+        event: 'PAYMENT_COMPLETED'
+      },
+      COMPLETED: {
+        title: 'Procurement Journey Completed',
+        message: `Procurement journey for Token ${queueEntry.tokenNumber} is complete. Thank you!`,
+        event: 'COMPLETED'
+      }
+    };
+
+    const notifInfo = notifMap[targetState];
+    if (notifInfo) {
+      dispatchNotification({
+        userId: farmerIdStr,
+        phone: queueEntry.farmerId?.phone,
+        title: notifInfo.title,
+        message: notifInfo.message,
+        event: notifInfo.event,
+        io
+      });
+    }
+  }
 
   return queueEntry;
 };

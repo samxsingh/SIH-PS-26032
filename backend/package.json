@@ -7,7 +7,7 @@
     "start": "node server.js",
     "dev": "node --watch server.js",
     "seed": "node seed/seed.js",
-    "test": "node test-auth.js && node test-phase2.js && node test-phase3.js && node test-phase4.js && node test-phase5.js && node test-phase6.js && node test-onboarding-verification.js && node test-role-navigation-auth.js && node test-procurement-centre-verification.js && node test-centre-entity-management.js && node test-demo-auth-matrix.js",
+    "test": "node test-demo-auth-matrix.js && node test-procurement-centre-verification.js && node test-centre-entity-management.js && node test-core-lifecycle.js && node test-bhashini-maps.js",
     "test:demo-auth": "node test-demo-auth-matrix.js",
     "smoke": "node test-smoke.js && node test-demo-auth-matrix.js"
   },

@@ -134,6 +134,18 @@ async function runTests() {
     assert(dist >= 70 && dist <= 85, `Expected ~75-80km, calculated ${dist}km`);
   });
 
+  // 8. India-Wide Administrative Location Directory (36 States & UTs)
+  test('India-wide administrative location directory covers all 36 States & UTs and GPS proximity', () => {
+    const { getStates, getLocationProvenance, findClosestDistrictFromCoords } = require('./src/data/locations');
+    const states = getStates();
+    assert.strictEqual(states.length, 36, 'Must contain all 36 States and UTs');
+    const prov = getLocationProvenance();
+    assert.strictEqual(prov.totalStatesAndUTs, 36);
+    assert(prov.summary.districtsCount >= 100);
+    const closest = findClosestDistrictFromCoords(23.25, 77.4);
+    assert.strictEqual(closest.districtName, 'Bhopal');
+  });
+
   console.log(`\n====================================================`);
   console.log(`📊 RESULTS: ${passed}/${total} TESTS PASSED`);
   console.log(`====================================================\n`);

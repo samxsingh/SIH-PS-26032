@@ -1099,6 +1099,276 @@ const getAdminCentreDetail = async (req, res, next) => {
   }
 };
 
+/**
+ * Update Procurement Centre Metadata (ADMIN ONLY)
+ */
+const updateAdminCentre = async (req, res, next) => {
+  try {
+    const { centreId } = req.params;
+    const {
+      name,
+      address,
+      villageName,
+      district,
+      pincode,
+      contactPhone,
+      operatingHours,
+      dailyCapacityQuintals,
+      maxConcurrentFarmers,
+      centreType
+    } = req.body;
+
+    let centre = null;
+    try {
+      centre = await ProcurementCentre.findById(centreId);
+    } catch (err) {
+      // Fallback
+    }
+
+    if (!centre && Array.isArray(inMemoryCentres)) {
+      centre = inMemoryCentres.find((c) => c._id === centreId || c.id === centreId || c.centreCode === centreId);
+    } else if (!centre && inMemoryCentres instanceof Map) {
+      centre = Array.from(inMemoryCentres.values()).find((c) => c._id === centreId || c.id === centreId || c.centreCode === centreId);
+    }
+
+    if (!centre) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'CENTRE_NOT_FOUND', message: `Procurement centre ${centreId} was not found.` }
+      });
+    }
+
+    if (centre.save) {
+      if (name) centre.name = name.trim();
+      if (address) centre.address = address.trim();
+      if (villageName !== undefined) centre.villageName = villageName.trim();
+      if (district) centre.district = district.trim();
+      if (pincode) centre.pincode = pincode.trim();
+      if (contactPhone) centre.contactPhone = contactPhone.trim();
+      if (operatingHours) centre.operatingHours = operatingHours;
+      if (dailyCapacityQuintals) centre.dailyCapacityQuintals = Number(dailyCapacityQuintals);
+      if (maxConcurrentFarmers) centre.maxConcurrentFarmers = Number(maxConcurrentFarmers);
+      if (centreType) centre.centreType = centreType;
+
+      await centre.save();
+    } else {
+      if (name) centre.name = name.trim();
+      if (address) centre.address = address.trim();
+      if (villageName !== undefined) centre.villageName = villageName.trim();
+      if (district) centre.district = district.trim();
+      if (pincode) centre.pincode = pincode.trim();
+      if (contactPhone) centre.contactPhone = contactPhone.trim();
+      if (operatingHours) centre.operatingHours = operatingHours;
+      if (dailyCapacityQuintals) centre.dailyCapacityQuintals = Number(dailyCapacityQuintals);
+      if (maxConcurrentFarmers) centre.maxConcurrentFarmers = Number(maxConcurrentFarmers);
+      if (centreType) centre.centreType = centreType;
+    }
+
+    try {
+      await logAuditEvent({
+        action: 'ADMIN_UPDATE_CENTRE',
+        userId: req.user.id || req.user._id,
+        userRole: 'ADMIN',
+        centreId: centre._id || centre.id,
+        details: {
+          centreCode: centre.centreCode,
+          updatedFields: Object.keys(req.body)
+        }
+      });
+    } catch (auditErr) {
+      // Non-fatal
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Procurement centre updated successfully.',
+      data: centre
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * Toggle Active Status (Deactivate / Reactivate) for Centre (ADMIN ONLY)
+ */
+const toggleAdminCentreStatus = async (req, res, next) => {
+  try {
+    const { centreId } = req.params;
+    const { isActive } = req.body;
+
+    if (isActive === undefined) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'MISSING_STATUS', message: 'isActive boolean flag is required in request body.' }
+      });
+    }
+
+    let centre = null;
+    try {
+      centre = await ProcurementCentre.findById(centreId);
+    } catch (err) {
+      // Fallback
+    }
+
+    if (!centre && Array.isArray(inMemoryCentres)) {
+      centre = inMemoryCentres.find((c) => c._id === centreId || c.id === centreId || c.centreCode === centreId);
+    } else if (!centre && inMemoryCentres instanceof Map) {
+      centre = Array.from(inMemoryCentres.values()).find((c) => c._id === centreId || c.id === centreId || c.centreCode === centreId);
+    }
+
+    if (!centre) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'CENTRE_NOT_FOUND', message: `Procurement centre ${centreId} was not found.` }
+      });
+    }
+
+    const newActiveState = Boolean(isActive);
+    const newVerificationStatus = newActiveState ? 'VERIFIED' : 'INACTIVE';
+
+    if (centre.save) {
+      centre.isActive = newActiveState;
+      centre.verificationStatus = newVerificationStatus;
+      await centre.save();
+    } else {
+      centre.isActive = newActiveState;
+      centre.verificationStatus = newVerificationStatus;
+    }
+
+    try {
+      await logAuditEvent({
+        action: newActiveState ? 'ADMIN_ACTIVATE_CENTRE' : 'ADMIN_DEACTIVATE_CENTRE',
+        userId: req.user.id || req.user._id,
+        userRole: 'ADMIN',
+        centreId: centre._id || centre.id,
+        details: {
+          centreCode: centre.centreCode,
+          isActive: newActiveState,
+          verificationStatus: newVerificationStatus
+        }
+      });
+    } catch (auditErr) {
+      // Non-fatal
+    }
+
+    res.status(200).json({
+      success: true,
+      message: newActiveState ? 'Centre reactivated and accepting bookings.' : 'Centre deactivated. Future bookings are suspended.',
+      data: {
+        id: centre._id || centre.id,
+        centreCode: centre.centreCode,
+        name: centre.name,
+        isActive: newActiveState,
+        verificationStatus: newVerificationStatus
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * Safe Delete Procurement Centre (ADMIN ONLY)
+ * Strictly blocks deletion if active/historical bookings, queue entries, or procurements exist.
+ */
+const deleteAdminCentre = async (req, res, next) => {
+  try {
+    const { centreId } = req.params;
+
+    let centre = null;
+    try {
+      centre = await ProcurementCentre.findById(centreId);
+    } catch (err) {
+      // Fallback
+    }
+
+    if (!centre && Array.isArray(inMemoryCentres)) {
+      centre = inMemoryCentres.find((c) => c._id === centreId || c.id === centreId || c.centreCode === centreId);
+    } else if (!centre && inMemoryCentres instanceof Map) {
+      centre = Array.from(inMemoryCentres.values()).find((c) => c._id === centreId || c.id === centreId || c.centreCode === centreId);
+    }
+
+    if (!centre) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'CENTRE_NOT_FOUND', message: `Procurement centre ${centreId} was not found.` }
+      });
+    }
+
+    const targetId = centre._id || centre.id;
+
+    // Safety dependency check: bookings, procurements, and queue entries
+    let bookingCount = 0;
+    let procCount = 0;
+    let queueCount = 0;
+
+    try {
+      [bookingCount, procCount, queueCount] = await Promise.all([
+        Booking.countDocuments({ centreId: targetId }),
+        Procurement.countDocuments({ centreId: targetId }),
+        QueueEntry.countDocuments({ centreId: targetId })
+      ]);
+    } catch (dbErr) {
+      bookingCount = 0;
+    }
+
+    if (bookingCount > 0 || procCount > 0 || queueCount > 0) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'CANNOT_DELETE_CENTRE_WITH_DEPENDENCIES',
+          message: `This procurement centre cannot be deleted because it is referenced by ${bookingCount} bookings, ${procCount} procurement records, and ${queueCount} queue tickets. Please deactivate the centre instead to preserve historical records and receipts.`,
+          dependencies: {
+            bookings: bookingCount,
+            procurements: procCount,
+            queueEntries: queueCount
+          }
+        }
+      });
+    }
+
+    // Safe deletion: No dependencies exist
+    if (centre.deleteOne) {
+      await centre.deleteOne();
+    } else if (centre._id) {
+      try {
+        await ProcurementCentre.findByIdAndDelete(centre._id);
+      } catch (e) {
+        // Fallback
+      }
+    }
+    if (Array.isArray(inMemoryCentres)) {
+      const idx = inMemoryCentres.findIndex((c) => c._id === centreId || c.id === centreId || c.centreCode === centreId);
+      if (idx !== -1) inMemoryCentres.splice(idx, 1);
+    } else if (inMemoryCentres instanceof Map) {
+      inMemoryCentres.delete(centreId);
+    }
+
+    try {
+      await logAuditEvent({
+        action: 'ADMIN_DELETE_CENTRE',
+        userId: req.user.id || req.user._id,
+        userRole: 'ADMIN',
+        details: {
+          centreId: targetId,
+          centreCode: centre.centreCode,
+          centreName: centre.name
+        }
+      });
+    } catch (auditErr) {
+      // Non-fatal
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Procurement centre ${centre.name} (${centre.centreCode}) was safely deleted.`
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getOverview,
   getCentresList,
@@ -1113,5 +1383,9 @@ module.exports = {
   getCentreStaffList,
   getDistrictOverview,
   getAdminMandis,
-  getAdminCentreDetail
+  getAdminCentreDetail,
+  updateAdminCentre,
+  toggleAdminCentreStatus,
+  deleteAdminCentre
 };
+

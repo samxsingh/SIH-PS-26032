@@ -316,6 +316,7 @@ export const AdminDashboardPage = () => {
             <CentrePerformanceTable
               centres={centres}
               onSelectCentre={(c) => setSelectedCentre(c)}
+              onRefresh={() => fetchDistrictData(false)}
             />
           </div>
         )}
@@ -375,6 +376,7 @@ export const AdminDashboardPage = () => {
           onSelectFarmer={(f) => {
             setSelectedFarmer(f);
           }}
+          onRefresh={() => fetchDistrictData(false)}
         />
       )}
 

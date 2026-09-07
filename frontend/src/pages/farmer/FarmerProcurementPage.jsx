@@ -596,15 +596,34 @@ export const FarmerProcurementPage = () => {
                     </div>
                   </div>
 
-                  <Button
-                    variant="outline"
-                    size="md"
-                    fullWidth
-                    onClick={() => setShowReceiptModal(true)}
-                  >
-                    <FileText className="w-4 h-4 mr-2 text-forest-green" />
-                    <span>{t('farmer.view_digital_receipt', 'View Official Digital Receipt')}</span>
-                  </Button>
+                  {currentStageIndex >= 7 ? (
+                    <Button
+                      variant="primary"
+                      size="md"
+                      fullWidth
+                      onClick={() => setShowReceiptModal(true)}
+                      className="bg-forest-green hover:bg-forest-green-dark text-white font-black shadow-brutal-sm cursor-pointer"
+                    >
+                      <FileText className="w-4 h-4 mr-2" />
+                      <span>{t('farmer.view_digital_receipt', 'View Official Digital Receipt')}</span>
+                    </Button>
+                  ) : (
+                    <div className="space-y-1.5 pt-1">
+                      <Button
+                        variant="outline"
+                        size="md"
+                        fullWidth
+                        disabled
+                        className="opacity-60 cursor-not-allowed bg-gray-50 border-gray-300 text-gray-500 font-bold"
+                      >
+                        <FileText className="w-4 h-4 mr-2 text-gray-400" />
+                        <span>{t('farmer.receipt_pending_completion', 'Receipt available after procurement completion')}</span>
+                      </Button>
+                      <p className="text-[10px] text-center text-dark-neutral-muted font-medium">
+                        {t('farmer.receipt_unlocked_at_stage_7', 'Official digital weight slip & receipt is generated upon weighbridge sign-off (Stage 8).')}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </Card>
 

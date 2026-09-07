@@ -375,7 +375,30 @@ export const StaffRegisterPage = () => {
         )
       };
 
-      const res = await apiClient.post('/staff/applications', dataPayload);
+      const hasFiles = formData.documents.some((d) => d.fileInstance);
+      let payload;
+      let headers = {};
+
+      if (hasFiles) {
+        payload = new FormData();
+        Object.entries(dataPayload).forEach(([key, val]) => {
+          if (key !== 'documentsMetadata' && val !== undefined && val !== null) {
+            payload.append(key, val);
+          }
+        });
+        formData.documents.forEach((d, idx) => {
+          if (d.fileInstance) {
+            payload.append('files', d.fileInstance);
+            payload.append(`docType_${idx}`, d.docType);
+            payload.append(`docName_${idx}`, d.docName);
+          }
+        });
+        headers['Content-Type'] = 'multipart/form-data';
+      } else {
+        payload = dataPayload;
+      }
+
+      const res = await apiClient.post('/staff/applications', payload, { headers });
 
       if (res && res.success) {
         setSuccessData(res.data);

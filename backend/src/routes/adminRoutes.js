@@ -14,7 +14,10 @@ const {
   getCentreStaffList,
   getDistrictOverview,
   getAdminMandis,
-  getAdminCentreDetail
+  getAdminCentreDetail,
+  updateAdminCentre,
+  toggleAdminCentreStatus,
+  deleteAdminCentre
 } = require('../controllers/adminController');
 const { validateStaffProvision } = require('../validators/authValidator');
 const { authenticate, authorize } = require('../middleware/authMiddleware');
@@ -29,6 +32,9 @@ router.get('/stats', getDistrictOverview);
 router.get('/mandis', getAdminMandis);
 router.get('/centres', getCentresList);
 router.get('/centres/:centreId/details', getAdminCentreDetail);
+router.put('/centres/:centreId', updateAdminCentre);
+router.patch('/centres/:centreId/status', toggleAdminCentreStatus);
+router.delete('/centres/:centreId', deleteAdminCentre);
 router.get('/centres/:centreId/staff', getCentreStaffList);
 router.patch('/centres/:centreId/reassign-head', reassignCentreHead);
 router.get('/districts', getDistricts);

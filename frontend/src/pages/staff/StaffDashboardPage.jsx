@@ -9,6 +9,7 @@ import Badge from '../../components/common/Badge';
 import Alert from '../../components/common/Alert';
 import Modal from '../../components/common/Modal';
 import DigitalReceiptModal from '../../components/farmer/DigitalReceiptModal';
+import { getMspRateForCrop } from '../../utils/formatters';
 
 // Phase 3 Specialized Operational Components
 import OperationalHeader from '../../components/staff/OperationalHeader';
@@ -246,7 +247,7 @@ export const StaffDashboardPage = () => {
     const netWeight = isCanonical ? 44.0 : Number(entry?.netWeightQuintals || entry?.quantityQuintals || 40);
     const grossWeight = isCanonical ? 45.5 : Number(entry?.grossWeightQuintals || (netWeight + 1.5).toFixed(1));
     const tareWeight = isCanonical ? 1.5 : Number(entry?.tareWeightQuintals || 1.5);
-    const rate = (isCanonical || crop === 'Wheat') ? 2275 : 2300;
+    const rate = isCanonical ? 2275 : (entry?.procurementRatePerQuintal || getMspRateForCrop(crop));
     const grossAmount = isCanonical ? 100100 : Math.round(netWeight * rate);
     const deductions = 0;
     const netPayable = grossAmount - deductions;

@@ -147,6 +147,11 @@ const procurementCentreSchema = new mongoose.Schema(
     isActive: {
       type: Boolean,
       default: true
+    },
+    applicationId: {
+      type: String,
+      trim: true,
+      default: null
     }
   },
   {
@@ -161,6 +166,7 @@ procurementCentreSchema.index({ district: 1, isActive: 1 });
 procurementCentreSchema.index({ verificationStatus: 1 });
 procurementCentreSchema.index({ currentHeadId: 1 });
 procurementCentreSchema.index({ mandiId: 1 });
+procurementCentreSchema.index({ applicationId: 1 }, { sparse: true });
 
 const ProcurementCentre = mongoose.model('ProcurementCentre', procurementCentreSchema);
 

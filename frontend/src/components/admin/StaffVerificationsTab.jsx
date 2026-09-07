@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import apiClient from '../../services/apiClient';
 import Card from '../common/Card';
@@ -56,6 +57,12 @@ export const StaffVerificationsTab = () => {
   const [appDetailLoading, setAppDetailLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
+  // Document Preview State
+  const [previewDoc, setPreviewDoc] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState(null);
+
   // Action Inputs inside Modal
   const [rejectionReason, setRejectionReason] = useState('');
   const [correctionNote, setCorrectionNote] = useState('');
@@ -105,9 +112,99 @@ export const StaffVerificationsTab = () => {
     }
   };
 
+  // Document Preview Handlers
+  const handleOpenDocumentPreview = async (doc) => {
+    if (!selectedApp || !doc) return;
+    setPreviewDoc(doc);
+    setPreviewLoading(true);
+    setPreviewError(null);
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
+    }
+
+    try {
+      const resBlob = await apiClient.get(
+        `/admin/staff-applications/${selectedApp.applicationId}/documents/${doc.documentId}`,
+        { responseType: 'blob' }
+      );
+
+      // Check if blob is actually a JSON error payload
+      if (resBlob && resBlob.type && resBlob.type.includes('application/json')) {
+        const text = await resBlob.text();
+        try {
+          const parsed = JSON.parse(text);
+          if (parsed && !parsed.success) {
+            setPreviewError(parsed.error?.message || 'Document unavailable');
+            return;
+          }
+        } catch (e) {
+          setPreviewError('Document unavailable');
+          return;
+        }
+      }
+
+      if (resBlob instanceof Blob && resBlob.size > 0) {
+        const objUrl = URL.createObjectURL(resBlob);
+        setPreviewUrl(objUrl);
+      } else {
+        setPreviewError('Document unavailable');
+      }
+    } catch (err) {
+      console.warn('Document preview error:', err);
+      setPreviewError('Document unavailable');
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const handleCloseDocumentPreview = () => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setPreviewDoc(null);
+    setPreviewUrl(null);
+    setPreviewError(null);
+  };
+
+  const handleCloseModal = () => {
+    if (previewDoc) {
+      handleCloseDocumentPreview();
+    }
+    setSelectedApp(null);
+    setActiveActionModal(null);
+    setRejectionReason('');
+    setCorrectionNote('');
+  };
+
+  // Keyboard navigation (Escape) & Body Scroll Lock
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (previewDoc) {
+          handleCloseDocumentPreview();
+        } else if (activeActionModal) {
+          setActiveActionModal(null);
+        } else if (selectedApp) {
+          handleCloseModal();
+        }
+      }
+    };
+
+    if (selectedApp || previewDoc) {
+      document.body.style.overflow = 'hidden';
+      window.addEventListener('keydown', handleKeyDown);
+    }
+
+    return () => {
+      document.body.style.overflow = 'unset';
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [selectedApp, previewDoc, activeActionModal, previewUrl]);
+
   // Verify Document Action
   const handleVerifyDocument = async (documentId) => {
-    if (!selectedApp) return;
+    if (!selectedApp || actionLoading) return;
     setActionLoading(true);
     try {
       const res = await apiClient.post(
@@ -128,7 +225,7 @@ export const StaffVerificationsTab = () => {
 
   // Reject Document Action
   const handleRejectDocument = async (documentId) => {
-    if (!selectedApp) return;
+    if (!selectedApp || actionLoading) return;
     const reason = prompt('Enter reason for document rejection:');
     if (!reason) return;
 
@@ -152,26 +249,34 @@ export const StaffVerificationsTab = () => {
 
   // Approve Application Action
   const handleApproveApplication = async () => {
-    if (!selectedApp) return;
+    if (!selectedApp || actionLoading) return;
     const unverified = (selectedApp.documents || []).filter((d) => d.status !== 'VERIFIED');
     if (unverified.length > 0) {
       if (!window.confirm(`Warning: ${unverified.length} documents are not yet marked VERIFIED. Do you want to mark all documents verified and approve?`)) {
         return;
       }
-      // Auto-verify remaining docs first
-      for (const d of unverified) {
-        await apiClient.post(`/admin/staff-applications/${selectedApp.applicationId}/documents/${d.documentId}/verify`, {
-          notes: 'Admin bulk approval'
-        });
+      setActionLoading(true);
+      setErrorMsg(null);
+      try {
+        // Auto-verify remaining docs first
+        for (const d of unverified) {
+          await apiClient.post(`/admin/staff-applications/${selectedApp.applicationId}/documents/${d.documentId}/verify`, {
+            notes: 'Admin bulk approval'
+          });
+        }
+      } catch (verErr) {
+        setErrorMsg(verErr.message || 'Failed to verify documents prior to approval.');
+        setActionLoading(false);
+        return;
       }
     } else {
       if (!window.confirm(`Are you sure you want to approve ${selectedApp.centreDetails?.name || selectedApp.centreName} and activate the staff account?`)) {
         return;
       }
+      setActionLoading(true);
+      setErrorMsg(null);
     }
 
-    setActionLoading(true);
-    setErrorMsg(null);
     try {
       const res = await apiClient.post(`/admin/staff-applications/${selectedApp.applicationId}/approve`, {});
       if (res.success) {
@@ -188,7 +293,7 @@ export const StaffVerificationsTab = () => {
 
   // Reject Application Action
   const handleRejectApplication = async () => {
-    if (!selectedApp || !rejectionReason.trim()) return;
+    if (!selectedApp || !rejectionReason.trim() || actionLoading) return;
 
     setActionLoading(true);
     setErrorMsg(null);
@@ -212,7 +317,7 @@ export const StaffVerificationsTab = () => {
 
   // Request Correction Action
   const handleRequestCorrection = async () => {
-    if (!selectedApp || !correctionNote.trim()) return;
+    if (!selectedApp || !correctionNote.trim() || actionLoading) return;
 
     setActionLoading(true);
     setErrorMsg(null);
@@ -483,306 +588,435 @@ export const StaffVerificationsTab = () => {
         </div>
       )}
 
-      {/* DETAILED APPLICATION REVIEW MODAL */}
-      {selectedApp && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-modal-backdrop">
-          <div className="bg-white rounded-xs border-3 border-dark-neutral shadow-brutal-xl max-w-3xl w-full max-h-[90vh] flex flex-col my-8 animate-modal-dialog">
-            {/* Modal Header */}
-            <div className="p-4 sm:p-5 border-b-2 border-dark-neutral flex items-center justify-between bg-warm-ivory">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xs bg-blue-600 text-white flex items-center justify-center border-2 border-dark-neutral shadow-[2px_2px_0px_#22252A]">
-                  <FileCheck className="w-6 h-6" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-lg font-black text-dark-neutral font-heading">
-                      Procurement Centre Application #{selectedApp.applicationId}
-                    </h3>
-                    {getStatusBadge(selectedApp.status)}
+      {/* DETAILED APPLICATION REVIEW MODAL (RENDERED VIA PORTAL TO PREVENT CSS TRANSFORM TRAPPING) */}
+      {selectedApp &&
+        createPortal(
+          <div
+            id="admin-application-review-modal"
+            className="fixed inset-0 z-[999] bg-dark-neutral/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-modal-backdrop"
+            onClick={(e) => {
+              if (e.target === e.currentTarget && !actionLoading) handleCloseModal();
+            }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="app-review-title"
+          >
+            <div className="bg-white rounded-xs border-3 border-dark-neutral shadow-brutal-xl max-w-3xl w-full max-h-[90vh] flex flex-col my-auto overflow-hidden animate-modal-dialog">
+              {/* Modal Header */}
+              <div className="p-4 sm:p-5 border-b-2 border-dark-neutral flex items-center justify-between bg-warm-ivory shrink-0">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xs bg-blue-600 text-white flex items-center justify-center border-2 border-dark-neutral shadow-[2px_2px_0px_#22252A] shrink-0">
+                    <FileCheck className="w-6 h-6" />
                   </div>
-                  <span className="text-xs text-dark-neutral-muted font-medium">
-                    Submitted: {new Date(selectedApp.submittedAt).toLocaleString('en-IN')}
-                  </span>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setSelectedApp(null)}
-                className="p-1.5 rounded-xs border-2 border-dark-neutral hover:bg-white text-dark-neutral"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-5 sm:p-6 overflow-y-auto space-y-6 flex-1">
-              {/* Correction / Rejection Notes if already recorded */}
-              {selectedApp.correctionNote && (
-                <div className="p-3 bg-purple-50 border-2 border-purple-400 rounded-xs text-xs text-purple-950">
-                  <strong>Pending Correction Note:</strong> {selectedApp.correctionNote}
-                </div>
-              )}
-              {selectedApp.rejectionReason && (
-                <div className="p-3 bg-red-50 border-2 border-red-400 rounded-xs text-xs text-red-950">
-                  <strong>Rejection Reason:</strong> {selectedApp.rejectionReason}
-                </div>
-              )}
-
-              {/* CENTRE INFORMATION & REPRESENTATIVE INFORMATION */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Centre Information */}
-                <div className="p-4 bg-warm-ivory rounded-xs border-2 border-dark-neutral space-y-2 shadow-brutal-sm">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-blue-900 block border-b pb-1 border-blue-200">
-                    CENTRE INFORMATION
-                  </span>
-                  <div className="text-xs space-y-1">
-                    <p>
-                      <strong>Centre Name:</strong> {selectedApp.centreDetails?.name || selectedApp.centreName}
-                    </p>
-                    <p>
-                      <strong>Registration / License No:</strong>{' '}
-                      {selectedApp.centreDetails?.registrationNumber || selectedApp.registrationNumber || 'Not provided'}
-                    </p>
-                    <p>
-                      <strong>Centre Type:</strong> {selectedApp.centreDetails?.type || selectedApp.centreType}
-                    </p>
-                    <p>
-                      <strong>Complete Address:</strong> {selectedApp.centreDetails?.address || selectedApp.address}
-                    </p>
-                    <p>
-                      <strong>Location:</strong> {selectedApp.centreDetails?.locality || selectedApp.localityName || selectedApp.district},{' '}
-                      {selectedApp.centreDetails?.district || selectedApp.district},{' '}
-                      {selectedApp.centreDetails?.state || selectedApp.state} -{' '}
-                      {selectedApp.centreDetails?.pinCode || selectedApp.pinCode}
-                    </p>
-                    <p>
-                      <strong>Contact:</strong> {selectedApp.centreDetails?.contactPhone || selectedApp.centreContact}
-                    </p>
-                    <p className="text-[11px] text-dark-neutral-muted">
-                      Source: {selectedApp.centreDetails?.locationSource || selectedApp.locationSource || 'OFFICIAL_DATA'}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Representative Information */}
-                <div className="p-4 bg-warm-ivory rounded-xs border-2 border-dark-neutral space-y-2 shadow-brutal-sm">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-blue-900 block border-b pb-1 border-blue-200">
-                    APPLICANT INFORMATION
-                  </span>
-                  <div className="text-xs space-y-1">
-                    <p>
-                      <strong>Authorized Representative:</strong>{' '}
-                      {selectedApp.representative?.fullName || selectedApp.fullName}
-                    </p>
-                    <p>
-                      <strong>Official Centre Email:</strong>{' '}
-                      {selectedApp.representative?.email || selectedApp.email}
-                    </p>
-                    <p>
-                      <strong>Contact Mobile Number:</strong> +91{' '}
-                      {selectedApp.representative?.phone || selectedApp.mobile}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* LEGAL DOCUMENTS INSPECTION */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-black text-dark-neutral uppercase tracking-wider flex items-center gap-1.5">
-                    <FileText className="w-4 h-4 text-blue-700" />
-                    <span>LEGAL & AUTHORIZATION DOCUMENTS ({selectedApp.documents?.length || 0})</span>
-                  </h4>
-                </div>
-
-                <div className="space-y-2.5">
-                  {(selectedApp.documents || []).map((doc) => (
-                    <div
-                      key={doc.documentId}
-                      className="p-3.5 rounded-xs border-2 border-dark-neutral bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-[2px_2px_0px_#22252A]"
-                    >
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-black text-dark-neutral">{doc.docName}</span>
-                          <span
-                            className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-xs border ${
-                              doc.status === 'VERIFIED'
-                                ? 'bg-emerald-100 text-emerald-900 border-emerald-400'
-                                : doc.status === 'REJECTED'
-                                ? 'bg-red-100 text-red-900 border-red-400'
-                                : 'bg-amber-100 text-amber-900 border-amber-400'
-                            }`}
-                          >
-                            {doc.status}
-                          </span>
-                        </div>
-                        <span className="text-[11px] text-dark-neutral-muted block">
-                          Type: <strong>{doc.docType}</strong> • File: {doc.originalFileName} ({(doc.fileSize / 1024).toFixed(1)} KB)
-                        </span>
-                        {doc.uploadedAt && (
-                          <span className="text-[10px] text-dark-neutral-muted block">
-                            Uploaded: {new Date(doc.uploadedAt).toLocaleString('en-IN')}
-                          </span>
-                        )}
-                        {doc.notes && (
-                          <span className="text-[11px] text-dark-neutral italic block">
-                            Note: {doc.notes}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        {/* View Document Action */}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            window.open(
-                              `/api/admin/staff-applications/${selectedApp.applicationId}/documents/${doc.documentId}`,
-                              '_blank'
-                            )
-                          }
-                          className="text-xs border-dark-neutral hover:bg-warm-ivory"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5 mr-1" />
-                          <span>View Document</span>
-                        </Button>
-
-                        {doc.status !== 'VERIFIED' && (
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            isLoading={actionLoading}
-                            onClick={() => handleVerifyDocument(doc.documentId)}
-                            className="text-xs bg-emerald-700 hover:bg-emerald-800"
-                          >
-                            <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
-                            <span>Mark Verified</span>
-                          </Button>
-                        )}
-
-                        {doc.status !== 'REJECTED' && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            isLoading={actionLoading}
-                            onClick={() => handleRejectDocument(doc.documentId)}
-                            className="text-xs text-red-700 hover:bg-red-50 border-red-400"
-                          >
-                            <XCircle className="w-3.5 h-3.5 mr-1" />
-                            <span>Reject</span>
-                          </Button>
-                        )}
-                      </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 id="app-review-title" className="text-base sm:text-lg font-black text-dark-neutral font-heading truncate">
+                        Procurement Centre Application #{selectedApp.applicationId}
+                      </h3>
+                      {getStatusBadge(selectedApp.status)}
                     </div>
-                  ))}
+                    <span className="text-xs text-dark-neutral-muted font-medium truncate block">
+                      Submitted: {new Date(selectedApp.submittedAt).toLocaleString('en-IN')}
+                    </span>
+                  </div>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={handleCloseModal}
+                  disabled={actionLoading}
+                  className="p-1.5 rounded-xs border-2 border-dark-neutral bg-white hover:bg-gray-100 text-dark-neutral shrink-0 ml-2 disabled:opacity-50"
+                  aria-label="Close review dialog"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
 
-              {/* Action Modals for Rejection or Requesting Correction */}
-              {activeActionModal === 'REJECT' && (
-                <div className="p-4 bg-red-50 border-2 border-red-500 rounded-xs space-y-3">
-                  <h5 className="text-xs font-black uppercase tracking-wider text-red-900">
-                    Administrator Remarks / Rejection Reason (Required)
-                  </h5>
-                  <textarea
-                    rows={2}
-                    value={rejectionReason}
-                    onChange={(e) => setRejectionReason(e.target.value)}
-                    placeholder="e.g. Incomplete mandi authorization certificate, unverified address proof."
-                    className="w-full p-2 text-xs border-2 border-dark-neutral bg-white rounded-xs focus:outline-none"
-                  />
-                  <div className="flex gap-2">
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      isLoading={actionLoading}
-                      onClick={handleRejectApplication}
-                      className="bg-red-700 hover:bg-red-800"
-                    >
-                      Confirm Rejection
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => setActiveActionModal(null)}>
-                      Cancel
-                    </Button>
+              {/* Modal Body */}
+              <div className="p-4 sm:p-6 overflow-y-auto space-y-6 flex-1 min-h-0">
+                {/* Correction / Rejection Notes if already recorded */}
+                {selectedApp.correctionNote && (
+                  <div className="p-3 bg-purple-50 border-2 border-purple-400 rounded-xs text-xs text-purple-950 break-words">
+                    <strong>Pending Correction Note:</strong> {selectedApp.correctionNote}
                   </div>
-                </div>
-              )}
-
-              {activeActionModal === 'CORRECTION' && (
-                <div className="p-4 bg-purple-50 border-2 border-purple-500 rounded-xs space-y-3">
-                  <h5 className="text-xs font-black uppercase tracking-wider text-purple-900">
-                    Administrator Remarks / Correction Note (Required)
-                  </h5>
-                  <textarea
-                    rows={2}
-                    value={correctionNote}
-                    onChange={(e) => setCorrectionNote(e.target.value)}
-                    placeholder="e.g. APMC authorization document is unclear. Please upload a valid copy."
-                    className="w-full p-2 text-xs border-2 border-dark-neutral bg-white rounded-xs focus:outline-none"
-                  />
-                  <div className="flex gap-2">
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      isLoading={actionLoading}
-                      onClick={handleRequestCorrection}
-                      className="bg-purple-700 hover:bg-purple-800"
-                    >
-                      Send Correction Request
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => setActiveActionModal(null)}>
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Modal Footer Controls */}
-            <div className="p-4 sm:p-5 border-t-2 border-dark-neutral bg-warm-ivory flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                {selectedApp.status !== 'REJECTED' && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setActiveActionModal('REJECT')}
-                    className="text-red-700 border-red-500 hover:bg-red-50"
-                  >
-                    <XCircle className="w-4 h-4 mr-1" />
-                    <span>REJECT APPLICATION</span>
-                  </Button>
                 )}
+                {selectedApp.rejectionReason && (
+                  <div className="p-3 bg-red-50 border-2 border-red-400 rounded-xs text-xs text-red-950 break-words">
+                    <strong>Rejection Reason:</strong> {selectedApp.rejectionReason}
+                  </div>
+                )}
+
+                {/* CENTRE INFORMATION & REPRESENTATIVE INFORMATION */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Centre Information */}
+                  <div className="p-4 bg-warm-ivory rounded-xs border-2 border-dark-neutral space-y-2 shadow-brutal-sm min-w-0">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-blue-900 block border-b pb-1 border-blue-200">
+                      CENTRE INFORMATION
+                    </span>
+                    <div className="text-xs space-y-1 break-words">
+                      <p>
+                        <strong>Centre Name:</strong> {selectedApp.centreDetails?.name || selectedApp.centreName}
+                      </p>
+                      <p>
+                        <strong>Registration / License No:</strong>{' '}
+                        {selectedApp.centreDetails?.registrationNumber || selectedApp.registrationNumber || 'Not provided'}
+                      </p>
+                      <p>
+                        <strong>Centre Type:</strong> {selectedApp.centreDetails?.type || selectedApp.centreType}
+                      </p>
+                      <p>
+                        <strong>Complete Address:</strong> {selectedApp.centreDetails?.address || selectedApp.address}
+                      </p>
+                      <p>
+                        <strong>Location:</strong> {selectedApp.centreDetails?.locality || selectedApp.localityName || selectedApp.district},{' '}
+                        {selectedApp.centreDetails?.district || selectedApp.district},{' '}
+                        {selectedApp.centreDetails?.state || selectedApp.state} -{' '}
+                        {selectedApp.centreDetails?.pinCode || selectedApp.pinCode}
+                      </p>
+                      <p>
+                        <strong>Contact:</strong> {selectedApp.centreDetails?.contactPhone || selectedApp.centreContact}
+                      </p>
+                      <p className="text-[11px] text-dark-neutral-muted">
+                        Source: {selectedApp.centreDetails?.locationSource || selectedApp.locationSource || 'OFFICIAL_DATA'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Representative Information */}
+                  <div className="p-4 bg-warm-ivory rounded-xs border-2 border-dark-neutral space-y-2 shadow-brutal-sm min-w-0">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-blue-900 block border-b pb-1 border-blue-200">
+                      APPLICANT INFORMATION
+                    </span>
+                    <div className="text-xs space-y-1 break-words">
+                      <p>
+                        <strong>Authorized Representative:</strong>{' '}
+                        {selectedApp.representative?.fullName || selectedApp.fullName}
+                      </p>
+                      <p>
+                        <strong>Official Centre Email:</strong>{' '}
+                        {selectedApp.representative?.email || selectedApp.email}
+                      </p>
+                      <p>
+                        <strong>Contact Mobile Number:</strong> +91{' '}
+                        {selectedApp.representative?.phone || selectedApp.mobile}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* LEGAL DOCUMENTS INSPECTION */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-black text-dark-neutral uppercase tracking-wider flex items-center gap-1.5">
+                      <FileText className="w-4 h-4 text-blue-700" />
+                      <span>LEGAL & AUTHORIZATION DOCUMENTS ({selectedApp.documents?.length || 0})</span>
+                    </h4>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    {(selectedApp.documents || []).map((doc) => (
+                      <div
+                        key={doc.documentId}
+                        className="p-3.5 rounded-xs border-2 border-dark-neutral bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-[2px_2px_0px_#22252A]"
+                      >
+                        <div className="space-y-1 min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-black text-dark-neutral">{doc.docName}</span>
+                            <span
+                              className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-xs border shrink-0 ${
+                                doc.status === 'VERIFIED'
+                                  ? 'bg-emerald-100 text-emerald-900 border-emerald-400'
+                                  : doc.status === 'REJECTED'
+                                  ? 'bg-red-100 text-red-900 border-red-400'
+                                  : 'bg-amber-100 text-amber-900 border-amber-400'
+                              }`}
+                            >
+                              {doc.status}
+                            </span>
+                          </div>
+                          <span className="text-[11px] text-dark-neutral-muted block break-words">
+                            Type: <strong>{doc.docType}</strong> • File: {doc.originalFileName} ({(doc.fileSize / 1024).toFixed(1)} KB)
+                          </span>
+                          {doc.uploadedAt && (
+                            <span className="text-[10px] text-dark-neutral-muted block">
+                              Uploaded: {new Date(doc.uploadedAt).toLocaleString('en-IN')}
+                            </span>
+                          )}
+                          {doc.notes && (
+                            <span className="text-[11px] text-dark-neutral italic block break-words">
+                              Note: {doc.notes}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                          {/* In-App Authenticated View Document Action */}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            type="button"
+                            onClick={() => handleOpenDocumentPreview(doc)}
+                            className="text-xs border-dark-neutral hover:bg-warm-ivory shadow-xs"
+                          >
+                            <Eye className="w-3.5 h-3.5 mr-1" />
+                            <span>View Document</span>
+                          </Button>
+
+                          {doc.status !== 'VERIFIED' && (
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              type="button"
+                              isLoading={actionLoading}
+                              disabled={actionLoading}
+                              onClick={() => handleVerifyDocument(doc.documentId)}
+                              className="text-xs bg-emerald-700 hover:bg-emerald-800"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                              <span>Mark Verified</span>
+                            </Button>
+                          )}
+
+                          {doc.status !== 'REJECTED' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              type="button"
+                              isLoading={actionLoading}
+                              disabled={actionLoading}
+                              onClick={() => handleRejectDocument(doc.documentId)}
+                              className="text-xs text-red-700 hover:bg-red-50 border-red-400"
+                            >
+                              <XCircle className="w-3.5 h-3.5 mr-1" />
+                              <span>Reject</span>
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Action Modals for Rejection or Requesting Correction */}
+                {activeActionModal === 'REJECT' && (
+                  <div className="p-4 bg-red-50 border-2 border-red-500 rounded-xs space-y-3">
+                    <h5 className="text-xs font-black uppercase tracking-wider text-red-900">
+                      Administrator Remarks / Rejection Reason (Required)
+                    </h5>
+                    <textarea
+                      rows={2}
+                      value={rejectionReason}
+                      onChange={(e) => setRejectionReason(e.target.value)}
+                      placeholder="e.g. Incomplete mandi authorization certificate, unverified address proof."
+                      className="w-full p-2 text-xs border-2 border-dark-neutral bg-white rounded-xs focus:outline-none"
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        isLoading={actionLoading}
+                        disabled={actionLoading}
+                        onClick={handleRejectApplication}
+                        className="bg-red-700 hover:bg-red-800"
+                      >
+                        Confirm Rejection
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => setActiveActionModal(null)} disabled={actionLoading}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {activeActionModal === 'CORRECTION' && (
+                  <div className="p-4 bg-purple-50 border-2 border-purple-500 rounded-xs space-y-3">
+                    <h5 className="text-xs font-black uppercase tracking-wider text-purple-900">
+                      Administrator Remarks / Correction Note (Required)
+                    </h5>
+                    <textarea
+                      rows={2}
+                      value={correctionNote}
+                      onChange={(e) => setCorrectionNote(e.target.value)}
+                      placeholder="e.g. APMC authorization document is unclear. Please upload a valid copy."
+                      className="w-full p-2 text-xs border-2 border-dark-neutral bg-white rounded-xs focus:outline-none"
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        isLoading={actionLoading}
+                        disabled={actionLoading}
+                        onClick={handleRequestCorrection}
+                        className="bg-purple-700 hover:bg-purple-800"
+                      >
+                        Send Correction Request
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => setActiveActionModal(null)} disabled={actionLoading}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer Controls */}
+              <div className="p-4 sm:p-5 border-t-2 border-dark-neutral bg-warm-ivory flex flex-wrap items-center justify-between gap-3 shrink-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {selectedApp.status !== 'REJECTED' && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={actionLoading}
+                      onClick={() => setActiveActionModal('REJECT')}
+                      className="text-red-700 border-red-500 hover:bg-red-50"
+                    >
+                      <XCircle className="w-4 h-4 mr-1" />
+                      <span>REJECT APPLICATION</span>
+                    </Button>
+                  )}
+
+                  {selectedApp.status !== 'APPROVED' && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={actionLoading}
+                      onClick={() => setActiveActionModal('CORRECTION')}
+                      className="text-purple-700 border-purple-500 hover:bg-purple-50"
+                    >
+                      <Info className="w-4 h-4 mr-1" />
+                      <span>REQUEST CORRECTION</span>
+                    </Button>
+                  )}
+                </div>
 
                 {selectedApp.status !== 'APPROVED' && (
                   <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setActiveActionModal('CORRECTION')}
-                    className="text-purple-700 border-purple-500 hover:bg-purple-50"
+                    variant="primary"
+                    size="md"
+                    isLoading={actionLoading}
+                    disabled={actionLoading}
+                    onClick={handleApproveApplication}
+                    className="min-h-[44px] shadow-brutal-sm font-black bg-emerald-700 hover:bg-emerald-800"
                   >
-                    <Info className="w-4 h-4 mr-1" />
-                    <span>REQUEST CORRECTION</span>
+                    <CheckCircle2 className="w-4 h-4 mr-2" />
+                    <span>APPROVE CENTRE</span>
                   </Button>
                 )}
               </div>
+            </div>
+          </div>,
+          document.body
+        )}
 
-              {selectedApp.status !== 'APPROVED' && (
+      {/* DOCUMENT PREVIEW MODAL (RENDERED VIA PORTAL ABOVE EVERYTHING) */}
+      {previewDoc &&
+        createPortal(
+          <div
+            id="admin-document-preview-modal"
+            className="fixed inset-0 z-[1000] bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-modal-backdrop"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) handleCloseDocumentPreview();
+            }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="preview-doc-title"
+          >
+            <div className="bg-white rounded-xs border-3 border-dark-neutral shadow-brutal-xl max-w-4xl w-full max-h-[92vh] flex flex-col my-auto overflow-hidden animate-modal-dialog">
+              {/* Preview Header */}
+              <div className="p-4 sm:p-5 border-b-2 border-dark-neutral flex items-center justify-between bg-warm-ivory shrink-0">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-xs bg-forest-green text-white flex items-center justify-center border-2 border-dark-neutral shadow-[2px_2px_0px_#22252A] shrink-0">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 id="preview-doc-title" className="text-sm sm:text-base font-black text-dark-neutral truncate">
+                      {previewDoc.docName}
+                    </h3>
+                    <span className="text-[11px] text-dark-neutral-muted truncate block">
+                      {previewDoc.originalFileName} • {previewDoc.mimeType} • {previewDoc.fileSize ? `${(previewDoc.fileSize / 1024).toFixed(1)} KB` : ''}
+                    </span>
+                  </div>
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCloseDocumentPreview}
+                  className="text-xs border-dark-neutral hover:bg-white shrink-0 ml-2"
+                >
+                  <X className="w-4 h-4 mr-1" />
+                  <span>Close Preview</span>
+                </Button>
+              </div>
+
+              {/* Preview Body */}
+              <div className="p-4 sm:p-6 overflow-y-auto flex-1 bg-warm-ivory/30 flex flex-col items-center justify-center min-h-[300px]">
+                {previewLoading ? (
+                  <LoadingState message="Fetching official verification document..." />
+                ) : previewError ? (
+                  <div className="p-6 text-center space-y-3 bg-white border-2 border-dark-neutral rounded-xs shadow-brutal-sm max-w-md w-full">
+                    <AlertTriangle className="w-10 h-10 text-amber-600 mx-auto" />
+                    <h4 className="text-base font-black text-dark-neutral">Document unavailable</h4>
+                    <p className="text-xs text-dark-neutral-muted">
+                      The physical document file could not be retrieved from the server. The applicant's metadata and verification status remain securely recorded.
+                    </p>
+                    <div className="pt-2">
+                      <Button variant="ghost" size="sm" onClick={handleCloseDocumentPreview}>
+                        Return to Application
+                      </Button>
+                    </div>
+                  </div>
+                ) : previewUrl ? (
+                  previewDoc.mimeType?.startsWith('image/') || /\.(jpg|jpeg|png|webp)$/i.test(previewDoc.originalFileName) ? (
+                    <div className="max-h-[70vh] overflow-auto p-2 bg-white rounded-xs border-2 border-dark-neutral shadow-brutal-sm">
+                      <img
+                        src={previewUrl}
+                        alt={previewDoc.docName}
+                        className="max-h-[65vh] max-w-full object-contain mx-auto"
+                      />
+                    </div>
+                  ) : previewDoc.mimeType === 'application/pdf' || /\.pdf$/i.test(previewDoc.originalFileName) ? (
+                    <div className="w-full h-[68vh] bg-white rounded-xs border-2 border-dark-neutral shadow-brutal-sm overflow-hidden">
+                      <iframe
+                        src={previewUrl}
+                        title={previewDoc.docName}
+                        className="w-full h-full border-none"
+                      />
+                    </div>
+                  ) : (
+                    <div className="p-6 text-center space-y-3 bg-white border-2 border-dark-neutral rounded-xs shadow-brutal-sm">
+                      <FileCheck className="w-10 h-10 text-forest-green mx-auto" />
+                      <h4 className="text-sm font-black text-dark-neutral">Document Ready</h4>
+                      <a
+                        href={previewUrl}
+                        download={previewDoc.originalFileName || 'verification-document'}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-forest-green text-white text-xs font-black rounded-xs border-2 border-dark-neutral shadow-brutal-sm"
+                      >
+                        <span>Download Document</span>
+                      </a>
+                    </div>
+                  )
+                ) : null}
+              </div>
+
+              {/* Preview Footer */}
+              <div className="p-3 sm:p-4 border-t-2 border-dark-neutral bg-warm-ivory flex items-center justify-between shrink-0">
+                <span className="text-xs font-bold text-dark-neutral">
+                  Verification Status: <strong className="text-forest-green">{previewDoc.status}</strong>
+                </span>
                 <Button
                   variant="primary"
-                  size="md"
-                  isLoading={actionLoading}
-                  onClick={handleApproveApplication}
-                  className="min-h-[44px] shadow-brutal-sm font-black bg-emerald-700 hover:bg-emerald-800"
+                  size="sm"
+                  onClick={handleCloseDocumentPreview}
+                  className="text-xs font-black shadow-brutal-sm"
                 >
-                  <CheckCircle2 className="w-4 h-4 mr-2" />
-                  <span>APPROVE CENTRE</span>
+                  Back to Application Review
                 </Button>
-              )}
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 };

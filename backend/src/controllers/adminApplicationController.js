@@ -1,5 +1,7 @@
 const path = require('path');
 const fs = require('fs');
+const bcrypt = require('bcryptjs');
+const mongoose = require('mongoose');
 const StaffRegistrationApplication = require('../models/StaffRegistrationApplication');
 const { inMemoryApplications } = require('../models/StaffRegistrationApplication');
 const ProcurementCentre = require('../models/ProcurementCentre');
@@ -488,7 +490,7 @@ const approveStaffApplication = async (req, res, next) => {
     try {
       app = await StaffRegistrationApplication.findOne({
         $or: [{ _id: id.match(/^[0-9a-fA-F]{24}$/) ? id : null }, { applicationId: id.toUpperCase() }].filter(Boolean)
-      });
+      }).select('+passwordHash');
     } catch (e) {
       app = inMemoryApplications.get(id.toUpperCase());
     }
@@ -504,11 +506,46 @@ const approveStaffApplication = async (req, res, next) => {
       });
     }
 
+    // Idempotency: If already approved, return existing authoritative centre
     if (app.status === 'APPROVED') {
-      return res.status(400).json({
-        success: false,
-        error: { code: 'ALREADY_APPROVED', message: 'This application has already been approved.' }
-      });
+      let existingCentre = null;
+      if (app.assignedCentreId) {
+        try {
+          existingCentre = await ProcurementCentre.findById(app.assignedCentreId);
+        } catch (e) {
+          existingCentre = null;
+        }
+      }
+      if (!existingCentre) {
+        try {
+          existingCentre = await ProcurementCentre.findOne({
+            $or: [
+              { applicationId: app.applicationId },
+              { sourceReference: `Gov Admin Approval (${app.applicationId})` }
+            ]
+          });
+        } catch (e) {
+          existingCentre = null;
+        }
+      }
+
+      if (existingCentre) {
+        const cId = existingCentre._id ? existingCentre._id.toString() : existingCentre.id;
+        return res.status(200).json({
+          success: true,
+          message: `Staff application already approved. Procurement Centre "${existingCentre.name}" is active with code ${existingCentre.centreCode}.`,
+          data: {
+            applicationId: app.applicationId,
+            status: 'APPROVED',
+            centreId: cId,
+            centreCode: existingCentre.centreCode,
+            userId: app.createdUserId ? app.createdUserId.toString() : null,
+            staffEmail: app.email,
+            staffPhone: app.mobile,
+            loginNotice: `Staff member can log in using Official Centre Email: ${app.email}`
+          }
+        });
+      }
     }
 
     // 1. Verify Documents are valid
@@ -534,105 +571,186 @@ const approveStaffApplication = async (req, res, next) => {
       }
     }
 
-    // 3. Create or Activate ProcurementCentre
-    const centreCode = await generateCentreCode(app.districtCode);
-    const centreData = {
-      centreCode,
-      name: app.centreName,
-      address: app.address,
-      villageName: app.localityName || app.district,
-      district: app.district,
-      districtCode: app.districtCode,
-      state: app.state,
-      stateCode: app.stateCode,
-      localityCode: app.localityCode || '',
-      pincode: app.pinCode,
-      location: {
-        type: 'Point',
-        coordinates: [app.coordinates.longitude, app.coordinates.latitude]
-      },
-      verificationStatus: 'VERIFIED',
-      dataSource: 'ADMIN',
-      sourceReference: `Gov Admin Approval (${app.applicationId})`,
-      sourceName: 'Department of Consumer Affairs',
-      lastVerifiedAt: new Date(),
-      contactPhone: app.centreContact,
-      operatingHours: { open: '08:00', close: '18:00' },
-      dailyCapacityQuintals: 1200,
-      maxConcurrentFarmers: 40,
-      currentLoadPercentage: 10,
-      activeQueueCount: 0,
-      isActive: true
-    };
-
-    let newCentre;
-    try {
-      newCentre = await ProcurementCentre.create(centreData);
-    } catch (dbErr) {
-      const cid = 'c_' + Date.now();
-      newCentre = {
-        _id: cid,
-        id: cid,
-        ...centreData,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
+    // 3. Find or Create exactly ONE ProcurementCentre (Idempotent)
+    let targetCentre = null;
+    if (app.assignedCentreId) {
+      try {
+        targetCentre = await ProcurementCentre.findById(app.assignedCentreId);
+      } catch (e) {
+        targetCentre = null;
+      }
+    }
+    if (!targetCentre) {
+      try {
+        targetCentre = await ProcurementCentre.findOne({
+          $or: [
+            { applicationId: app.applicationId },
+            { sourceReference: `Gov Admin Approval (${app.applicationId})` }
+          ]
+        });
+      } catch (e) {
+        targetCentre = null;
+      }
     }
 
-    const centreId = newCentre._id ? newCentre._id.toString() : newCentre.id;
+    if (targetCentre) {
+      targetCentre.name = app.centreName;
+      targetCentre.address = app.address;
+      targetCentre.villageName = app.localityName || app.district;
+      targetCentre.district = app.district;
+      targetCentre.districtCode = app.districtCode;
+      targetCentre.state = app.state;
+      targetCentre.stateCode = app.stateCode;
+      targetCentre.localityCode = app.localityCode || '';
+      targetCentre.pincode = app.pinCode;
+      targetCentre.contactPhone = app.centreContact;
+      targetCentre.verificationStatus = 'VERIFIED';
+      targetCentre.isActive = true;
+      targetCentre.applicationId = app.applicationId;
+      targetCentre.lastVerifiedAt = new Date();
+      if (targetCentre.save) {
+        await targetCentre.save();
+      }
+    } else {
+      const centreCode = await generateCentreCode(app.districtCode);
+      const centreData = {
+        centreCode,
+        name: app.centreName,
+        address: app.address,
+        villageName: app.localityName || app.district,
+        district: app.district,
+        districtCode: app.districtCode,
+        state: app.state,
+        stateCode: app.stateCode,
+        localityCode: app.localityCode || '',
+        pincode: app.pinCode,
+        location: {
+          type: 'Point',
+          coordinates: [app.coordinates.longitude, app.coordinates.latitude]
+        },
+        verificationStatus: 'VERIFIED',
+        dataSource: 'ADMIN',
+        sourceReference: `Gov Admin Approval (${app.applicationId})`,
+        applicationId: app.applicationId,
+        sourceName: 'Department of Consumer Affairs',
+        lastVerifiedAt: new Date(),
+        contactPhone: app.centreContact,
+        operatingHours: { open: '08:00', close: '18:00' },
+        dailyCapacityQuintals: 1200,
+        maxConcurrentFarmers: 40,
+        currentLoadPercentage: 10,
+        activeQueueCount: 0,
+        isActive: true
+      };
+
+      try {
+        targetCentre = await ProcurementCentre.create(centreData);
+      } catch (dbErr) {
+        const cid = 'c_' + Date.now();
+        targetCentre = {
+          _id: cid,
+          id: cid,
+          ...centreData,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+      }
+    }
+
+    const centreId = targetCentre._id ? targetCentre._id.toString() : targetCentre.id;
+    const centreCode = targetCentre.centreCode;
 
     // 4. Create or Activate Staff User Account as Appointed Centre Head
-    const userData = {
-      fullName: app.fullName,
-      phone: app.mobile,
-      email: app.email,
-      passwordHash: app.passwordHash,
-      role: 'CENTRE_STAFF',
-      accountStatus: 'ACTIVE',
-      designation: 'Centre Head',
-      isCentreHead: true,
-      assignedCentreId: newCentre._id || newCentre.id,
-      district: app.district,
-      state: app.state,
-      stateCode: app.stateCode,
-      districtCode: app.districtCode,
-      localityCode: app.localityCode || '',
-      languagePreference: 'en',
-      isActive: true
-    };
-
-    let newUser;
-    try {
-      newUser = await User.create(userData);
-    } catch (dbErr) {
-      const uid = 'u_staff_' + Date.now();
-      newUser = {
-        _id: uid,
-        id: uid,
-        ...userData,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      inMemoryUsers.set(uid, newUser);
+    let validPasswordHash = app.passwordHash;
+    if (!validPasswordHash) {
+      const salt = await bcrypt.genSalt(10);
+      validPasswordHash = await bcrypt.hash('Staff@AgriNexus2026', salt);
     }
 
-    const userId = newUser._id ? newUser._id.toString() : newUser.id;
+    let targetUser = null;
+    try {
+      targetUser = await User.findOne({
+        $or: [{ email: app.email.toLowerCase() }, { phone: app.mobile }]
+      });
+    } catch (e) {
+      for (const [, u] of inMemoryUsers) {
+        if ((u.email && u.email.toLowerCase() === app.email.toLowerCase()) || u.phone === app.mobile) {
+          targetUser = u;
+          break;
+        }
+      }
+    }
 
-    // Link Centre's current appointed head
-    newCentre.currentHeadId = newUser._id || newUser.id;
-    if (newCentre.save) {
-      await newCentre.save();
+    const isMongoCentre = mongoose.Types.ObjectId.isValid(centreId);
+
+    if (targetUser) {
+      targetUser.role = 'CENTRE_STAFF';
+      targetUser.accountStatus = 'ACTIVE';
+      targetUser.isActive = true;
+      targetUser.isCentreHead = true;
+      targetUser.designation = 'Centre Head';
+      targetUser.assignedCentreId = isMongoCentre ? targetCentre._id : (targetCentre._id || targetCentre.id);
+      if (targetUser.save) {
+        await targetUser.save();
+      }
+    } else {
+      const userData = {
+        fullName: app.fullName,
+        phone: app.mobile,
+        email: app.email.toLowerCase(),
+        passwordHash: validPasswordHash,
+        role: 'CENTRE_STAFF',
+        accountStatus: 'ACTIVE',
+        designation: 'Centre Head',
+        isCentreHead: true,
+        assignedCentreId: isMongoCentre ? targetCentre._id : (targetCentre._id || targetCentre.id),
+        district: app.district,
+        state: app.state,
+        stateCode: app.stateCode,
+        districtCode: app.districtCode,
+        localityCode: app.localityCode || '',
+        languagePreference: 'en',
+        isActive: true
+      };
+
+      try {
+        targetUser = await User.create(userData);
+      } catch (dbErr) {
+        const uid = 'u_staff_' + Date.now();
+        targetUser = {
+          _id: uid,
+          id: uid,
+          ...userData,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+        inMemoryUsers.set(uid, targetUser);
+      }
+    }
+
+    const userId = targetUser._id ? targetUser._id.toString() : targetUser.id;
+
+    // Link Centre's current appointed head if valid ObjectId
+    if (mongoose.Types.ObjectId.isValid(userId)) {
+      targetCentre.currentHeadId = targetUser._id;
+      if (targetCentre.save) {
+        await targetCentre.save();
+      }
     } else {
       const { inMemoryCentres } = require('./centreController');
-      const idx = inMemoryCentres.findIndex(c => (c._id || c.id) === (newCentre._id || newCentre.id));
+      const idx = inMemoryCentres.findIndex((c) => (c._id || c.id) === centreId);
       if (idx !== -1) inMemoryCentres[idx].currentHeadId = userId;
     }
 
     // 5. Update Application to APPROVED
     app.status = 'APPROVED';
     app.approvalNote = approvalNote || 'Verified and approved by Government Administrator.';
-    app.assignedCentreId = newCentre._id || newCentre.id;
-    app.createdUserId = newUser._id || newUser.id;
+    if (isMongoCentre) {
+      app.assignedCentreId = targetCentre._id;
+    }
+    if (mongoose.Types.ObjectId.isValid(userId)) {
+      app.createdUserId = targetUser._id;
+    }
     app.reviewedBy = req.user._id || req.user.id;
     app.approvedAt = new Date();
     app.reviewedAt = new Date();
@@ -643,7 +761,22 @@ const approveStaffApplication = async (req, res, next) => {
       inMemoryApplications.set(app.applicationId, app);
     }
 
-    // 6. Generate Immutable Audit Events
+    // 6. Clean up any accidental orphan duplicate centres created previously for this application
+    if (isMongoCentre) {
+      try {
+        await ProcurementCentre.deleteMany({
+          _id: { $ne: targetCentre._id },
+          $or: [
+            { applicationId: app.applicationId },
+            { sourceReference: `Gov Admin Approval (${app.applicationId})` }
+          ]
+        });
+      } catch (cleanErr) {
+        // Non-blocking cleanup
+      }
+    }
+
+    // 7. Generate Immutable Audit Events
     try {
       await AuditLog.create([
         {
@@ -741,6 +874,7 @@ const approveStaffApplication = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+
 };
 
 // @desc    Reject Staff Application
@@ -897,26 +1031,54 @@ const getAdminDocument = async (req, res, next) => {
       });
     }
 
+    // Check primary filePath or fallback directory search
+    let resolvedPath = null;
     if (doc.filePath && fs.existsSync(doc.filePath)) {
-      res.setHeader('Content-Type', doc.mimeType || 'application/pdf');
-      res.setHeader('Content-Disposition', `inline; filename="${doc.originalFileName}"`);
-      return res.sendFile(path.resolve(doc.filePath));
+      resolvedPath = path.resolve(doc.filePath);
+    } else if (doc.filePath || doc.originalFileName) {
+      const baseName1 = path.basename(doc.filePath || '');
+      const baseName2 = path.basename(doc.originalFileName || '');
+      const candidate1 = path.join(__dirname, '../../uploads/verification-docs', baseName1);
+      const candidate2 = path.join(__dirname, '../../uploads/verification-docs', baseName2);
+      if (baseName1 && fs.existsSync(candidate1)) {
+        resolvedPath = candidate1;
+      } else if (baseName2 && fs.existsSync(candidate2)) {
+        resolvedPath = candidate2;
+      }
     }
 
-    res.status(200).json({
-      success: true,
-      data: {
-        documentId: doc.documentId,
-        docType: doc.docType,
-        docName: doc.docName,
-        originalFileName: doc.originalFileName,
-        mimeType: doc.mimeType,
-        fileSize: doc.fileSize,
-        storageReference: doc.storageReference,
-        status: doc.status,
-        verifiedAt: doc.verifiedAt,
-        notes: doc.notes,
-        uploadedAt: doc.uploadedAt
+    if (resolvedPath) {
+      res.setHeader('Content-Type', doc.mimeType || 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="${doc.originalFileName}"`);
+      return res.sendFile(resolvedPath);
+    }
+
+    // If client specifically queries metadata
+    if (req.query.metadata === 'true') {
+      return res.status(200).json({
+        success: true,
+        data: {
+          documentId: doc.documentId,
+          docType: doc.docType,
+          docName: doc.docName,
+          originalFileName: doc.originalFileName,
+          mimeType: doc.mimeType,
+          fileSize: doc.fileSize,
+          storageReference: doc.storageReference,
+          status: doc.status,
+          verifiedAt: doc.verifiedAt,
+          notes: doc.notes,
+          uploadedAt: doc.uploadedAt
+        }
+      });
+    }
+
+    // Document file is not found on disk: return 404 with safe error message
+    return res.status(404).json({
+      success: false,
+      error: {
+        code: 'DOCUMENT_UNAVAILABLE',
+        message: 'Document unavailable'
       }
     });
   } catch (error) {

@@ -15,16 +15,31 @@ import {
   TrendingUp,
   IndianRupee,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Edit3,
+  Power,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 import apiClient from '../../services/apiClient';
 import Badge from '../common/Badge';
+import Modal from '../common/Modal';
+import Button from '../common/Button';
+import Alert from '../common/Alert';
+import EditCentreModal from './EditCentreModal';
 
-export const CentreDetailCommandDrawer = ({ centre, onClose, onSelectFarmer }) => {
+export const CentreDetailCommandDrawer = ({ centre, onClose, onSelectFarmer, onRefresh }) => {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('OVERVIEW'); // 'OVERVIEW' | 'QUEUE' | 'STAFF' | 'ACTIVITY'
   const [centreDetail, setCentreDetail] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Management Action State
+  const [isEditing, setIsEditing] = useState(false);
+  const [showStatusConfirm, setShowStatusConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [actionError, setActionError] = useState(null);
 
   useEffect(() => {
     if (!centre) return;
@@ -446,16 +461,177 @@ export const CentreDetailCommandDrawer = ({ centre, onClose, onSelectFarmer }) =
           )}
         </div>
 
-        {/* Drawer Footer */}
-        <div className="p-4 border-t-2 border-dark-neutral bg-warm-ivory flex justify-end">
+        {/* Drawer Footer & Management Action Bar */}
+        <div className="p-4 border-t-2 border-dark-neutral bg-warm-ivory flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <button
+              onClick={() => {
+                setActionError(null);
+                setIsEditing(true);
+              }}
+              className="px-3 py-1.5 bg-white hover:bg-gray-100 border-2 border-dark-neutral rounded-xs text-xs font-bold text-dark-neutral shadow-[1px_1px_0px_#22252A] inline-flex items-center gap-1.5 cursor-pointer"
+            >
+              <Edit3 className="w-3.5 h-3.5 text-blue-700" />
+              <span>Edit Facility</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setActionError(null);
+                setShowStatusConfirm(true);
+              }}
+              className={`px-3 py-1.5 border-2 border-dark-neutral rounded-xs text-xs font-bold transition-all shadow-[1px_1px_0px_#22252A] inline-flex items-center gap-1.5 cursor-pointer ${
+                centre.isActive !== false
+                  ? 'bg-amber-50 text-amber-900 hover:bg-amber-100'
+                  : 'bg-emerald-50 text-emerald-900 hover:bg-emerald-100'
+              }`}
+            >
+              <Power className="w-3.5 h-3.5" />
+              <span>{centre.isActive !== false ? 'Deactivate' : 'Activate'}</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setActionError(null);
+                setShowDeleteConfirm(true);
+              }}
+              className="px-3 py-1.5 bg-red-50 hover:bg-red-600 hover:text-white border-2 border-dark-neutral rounded-xs text-xs font-bold text-red-700 transition-all shadow-[1px_1px_0px_#22252A] inline-flex items-center gap-1.5 cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Delete</span>
+            </button>
+          </div>
+
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-white hover:bg-gray-100 border-2 border-dark-neutral rounded-xs text-xs font-bold text-dark-neutral shadow-[2px_2px_0px_#22252A]"
+            className="px-4 py-1.5 bg-white hover:bg-gray-100 border-2 border-dark-neutral rounded-xs text-xs font-bold text-dark-neutral shadow-[2px_2px_0px_#22252A]"
           >
             Close Panel
           </button>
         </div>
       </div>
+
+      {/* Edit Centre Modal */}
+      {isEditing && (
+        <EditCentreModal
+          isOpen={isEditing}
+          onClose={() => setIsEditing(false)}
+          centre={centre}
+          onCentreUpdated={(updatedCentre) => {
+            setIsEditing(false);
+            if (onRefresh) onRefresh();
+          }}
+        />
+      )}
+
+      {/* Deactivate / Reactivate Modal */}
+      {showStatusConfirm && (
+        <Modal
+          isOpen={showStatusConfirm}
+          onClose={() => setShowStatusConfirm(false)}
+          title={centre.isActive !== false ? t('admin.confirm_deactivate_title', 'Deactivate Procurement Centre?') : t('admin.confirm_activate_title', 'Reactivate Procurement Centre?')}
+          size="md"
+          footer={
+            <>
+              <Button variant="ghost" onClick={() => setShowStatusConfirm(false)} disabled={actionLoading}>
+                {t('common.cancel', 'Cancel')}
+              </Button>
+              <Button
+                variant={centre.isActive !== false ? 'warning' : 'primary'}
+                onClick={async () => {
+                  setActionLoading(true);
+                  try {
+                    const cId = centre.id || centre._id;
+                    const res = await apiClient.patch(`/admin/centres/${cId}/status`, { isActive: centre.isActive === false });
+                    if (res.success) {
+                      setShowStatusConfirm(false);
+                      if (onRefresh) onRefresh();
+                      onClose();
+                    } else {
+                      setActionError(res.error?.message || 'Failed to update status.');
+                    }
+                  } catch (err) {
+                    setActionError(err.message || 'Error updating status.');
+                  } finally {
+                    setActionLoading(false);
+                  }
+                }}
+                disabled={actionLoading}
+              >
+                <Power className="w-4 h-4 mr-1.5" />
+                <span>
+                  {actionLoading
+                    ? t('common.loading', 'Updating...')
+                    : centre.isActive !== false
+                    ? t('admin.deactivate_centre', 'Deactivate Centre')
+                    : t('admin.activate_centre', 'Activate Centre')}
+                </span>
+              </Button>
+            </>
+          }
+        >
+          <div className="space-y-3 text-xs">
+            {actionError && <Alert type="error" onClose={() => setActionError(null)}>{actionError}</Alert>}
+            <p className="font-bold text-dark-neutral leading-relaxed">
+              {centre.isActive !== false
+                ? t('admin.confirm_deactivate_desc', 'Deactivating this centre immediately prevents farmers from booking new slots. All existing bookings, queue records, and historical receipts remain completely preserved and accessible.')
+                : t('admin.confirm_activate_desc', 'Reactivating this centre will restore it to the active directory and allow farmers to resume booking intake slots.')}
+            </p>
+          </div>
+        </Modal>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <Modal
+          isOpen={showDeleteConfirm}
+          onClose={() => setShowDeleteConfirm(false)}
+          title={t('admin.confirm_delete_title', 'Permanently Delete Centre?')}
+          size="md"
+          footer={
+            <>
+              <Button variant="ghost" onClick={() => setShowDeleteConfirm(false)} disabled={actionLoading}>
+                {t('common.cancel', 'Cancel')}
+              </Button>
+              <Button
+                variant="danger"
+                onClick={async () => {
+                  setActionLoading(true);
+                  try {
+                    const cId = centre.id || centre._id;
+                    const res = await apiClient.delete(`/admin/centres/${cId}`);
+                    if (res.success) {
+                      setShowDeleteConfirm(false);
+                      if (onRefresh) onRefresh();
+                      onClose();
+                    } else {
+                      setActionError(res.error?.message || 'Failed to delete centre.');
+                    }
+                  } catch (err) {
+                    setActionError(err.message || 'Error deleting centre.');
+                  } finally {
+                    setActionLoading(false);
+                  }
+                }}
+                disabled={actionLoading}
+              >
+                <Trash2 className="w-4 h-4 mr-1.5" />
+                <span>{actionLoading ? t('common.loading', 'Deleting...') : t('admin.delete_centre', 'Delete Centre')}</span>
+              </Button>
+            </>
+          }
+        >
+          <div className="space-y-3 text-xs">
+            {actionError && <Alert type="error" onClose={() => setActionError(null)}>{actionError}</Alert>}
+            <div className="flex items-start gap-2 p-3 bg-red-50 border-2 border-red-600 rounded-xs text-red-950">
+              <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+              <p className="font-bold leading-relaxed">
+                {t('admin.confirm_delete_desc', 'This action cannot be undone. Centres with active or historical records cannot be deleted and must be deactivated instead.')}
+              </p>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };

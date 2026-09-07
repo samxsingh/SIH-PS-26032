@@ -1,4 +1,5 @@
 const Slot = require('../models/Slot');
+const ProcurementCentre = require('../models/ProcurementCentre');
 const { inMemorySlots } = require('../services/bookingService');
 
 // Generate 8 standard 1-hour delivery windows for a centre & date
@@ -52,6 +53,27 @@ const getSlots = async (req, res, next) => {
         error: {
           code: 'MISSING_PARAMS',
           message: 'Both centreId and date parameters are required.'
+        }
+      });
+    }
+
+    let centre = null;
+    try {
+      centre = await ProcurementCentre.findById(centreId);
+    } catch (cErr) {
+      // Check in-memory centres
+      const { inMemoryCentres } = require('./centreController');
+      if (inMemoryCentres) {
+        centre = inMemoryCentres.find((c) => c._id === centreId || c.id === centreId || c.centreCode === centreId);
+      }
+    }
+
+    if (centre && (centre.isActive === false || centre.verificationStatus === 'INACTIVE')) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'CENTRE_INACTIVE',
+          message: 'This procurement centre is currently inactive and not accepting deliveries.'
         }
       });
     }
