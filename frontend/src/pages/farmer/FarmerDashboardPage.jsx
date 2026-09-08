@@ -69,9 +69,20 @@ export const FarmerDashboardPage = () => {
     try {
       const res = await apiClient.get('/bookings/my');
       if (res.success && res.data && res.data.length > 0) {
-        const active = res.data.find(
-          (b) => !['COMPLETED', 'PAYMENT_COMPLETED', 'CANCELLED', 'REJECTED'].includes(b.operationalStatus) && b.bookingStatus !== 'COMPLETED'
-        ) || res.data[0];
+        // Priority 1: Any booking currently undergoing live centre operations
+        const inProgress = res.data.find((b) =>
+          ['WAITING', 'CALLED', 'ARRIVED', 'VERIFICATION', 'QUALITY_CHECK', 'WEIGHING', 'PROCUREMENT_CONFIRMED', 'PAYMENT_PROCESSING'].includes(
+            (b.operationalStatus || '').toUpperCase()
+          )
+        );
+
+        // Priority 2: Any upcoming booking with confirmed slot
+        const upcomingConfirmed = res.data.find(
+          (b) => b.bookingStatus === 'CONFIRMED' && !['COMPLETED', 'CANCELLED', 'REJECTED'].includes(b.operationalStatus)
+        );
+
+        // Priority 3: Fall back to most recent booking (e.g. newly completed or initial booking)
+        const active = inProgress || upcomingConfirmed || res.data[0];
         setActiveBooking(active || null);
       } else {
         setActiveBooking(null);
@@ -85,18 +96,27 @@ export const FarmerDashboardPage = () => {
   };
 
   // Real-time synchronization via Socket.IO
+  const farmerUserId = user?._id || user?.id;
   useSocketQueue({
-    farmerId: user?.id || user?._id,
+    farmerId: farmerUserId,
     onQueueUpdate: () => {
       fetchActiveBooking();
     }
   });
 
-  // Clear booking on user change
+  // Clear booking on user change & maintain fallback periodic sync
   useEffect(() => {
     setActiveBooking(null);
     fetchActiveBooking();
-  }, [user?.id || user?._id]);
+
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchActiveBooking();
+      }
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [farmerUserId]);
 
   useEffect(() => {
     const fetchCentresAndMandis = async () => {
@@ -286,7 +306,7 @@ export const FarmerDashboardPage = () => {
                         </Link>
                       );
                     }
-                    if (st === 'PAYMENT_COMPLETED') {
+                    if (['PROCUREMENT_CONFIRMED', 'PAYMENT_PROCESSING', 'PAYMENT_COMPLETED', 'COMPLETED'].includes(st)) {
                       return (
                         <Link to={`/farmer/procurement/${activeBooking.id || activeBooking._id}`} className="w-full lg:w-auto">
                           <Button
@@ -294,7 +314,7 @@ export const FarmerDashboardPage = () => {
                             size="md"
                             className="w-full lg:min-w-[200px] shadow-brutal min-h-[44px] font-black bg-wheat-accent hover:bg-wheat-accent/90 text-dark-neutral border-2 border-dark-neutral justify-center text-sm"
                           >
-                            <span>View Receipt →</span>
+                            <span>View Receipt & Status →</span>
                           </Button>
                         </Link>
                       );

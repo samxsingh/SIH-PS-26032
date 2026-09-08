@@ -459,17 +459,18 @@ const transitionQueueState = async ({ queueEntryId, targetState, staffUser, coun
  */
 const getFarmerQueueStatus = async (farmerId) => {
   let activeEntry = null;
+  const activeStates = ['WAITING', 'CALLED', 'ARRIVED', 'VERIFICATION', 'QUALITY_CHECK', 'WEIGHING', 'PROCUREMENT_CONFIRMED', 'PAYMENT_PROCESSING'];
   try {
     activeEntry = await QueueEntry.findOne({
       farmerId,
-      state: { $in: ['WAITING', 'CALLED', 'ARRIVED', 'VERIFICATION', 'WEIGHING'] }
+      state: { $in: activeStates }
     })
       .populate('centreId', 'name address centreCode')
       .populate('bookingId', 'bookingDate timeWindow cropType estimatedQuantityQuintals')
       .lean();
   } catch (err) {
     for (const [, qe] of inMemoryQueueEntries) {
-      if ((qe.farmerId === farmerId || qe.farmerId.toString() === farmerId.toString()) && ['WAITING', 'CALLED', 'ARRIVED', 'VERIFICATION', 'WEIGHING'].includes(qe.state)) {
+      if ((qe.farmerId === farmerId || qe.farmerId.toString() === farmerId.toString()) && activeStates.includes(qe.state)) {
         activeEntry = qe;
         break;
       }

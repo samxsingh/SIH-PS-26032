@@ -31,27 +31,40 @@ import {
 } from 'lucide-react';
 
 const getOperationalStages = (t) => [
-  { key: 'BOOKED', short: t('farmer.stage_booked_short', 'Booked'), desc: t('farmer.stage_booked_desc', 'Slot confirmed. Your delivery appointment is reserved.') },
-  { key: 'ARRIVED', short: t('farmer.stage_arrived_short', 'Arrived'), desc: t('farmer.stage_arrived_desc', 'Checked in at the procurement centre security gate.') },
-  { key: 'IN QUEUE', short: t('farmer.stage_in_queue_short', 'In Queue'), desc: t('farmer.stage_in_queue_desc', 'Token active in intake line waiting for inspection counter.') },
-  { key: 'QUALITY CHECK', short: t('farmer.stage_quality_check_short', 'Quality'), desc: t('farmer.stage_quality_check_desc', 'Moisture and FAQ grain standards under verification.') },
-  { key: 'WEIGHING', short: t('farmer.stage_weighing_short', 'Weighing'), desc: t('farmer.stage_weighing_desc', 'Vehicle gross weight recorded on certified weighbridge.') },
-  { key: 'PROCUREMENT COMPLETE', short: t('farmer.stage_procurement_short', 'Procured'), desc: t('farmer.stage_procurement_desc', 'Produce accepted and procurement receipt generated.') },
-  { key: 'PAYMENT PROCESSING', short: t('farmer.stage_payment_short', 'Payment'), desc: t('farmer.stage_payment_desc', 'Direct Benefit Transfer (DBT) settlement initiated.') },
-  { key: 'COMPLETED', short: t('farmer.stage_completed_short', 'Completed'), desc: t('farmer.stage_completed_desc', 'Procurement complete and funds credited to bank account.') }
+  { key: 'BOOKED', short: t('farmer.stage_booked_short', 'Booked'), desc: t('farmer.canonical_meaning_1', 'Slot confirmed. Your delivery appointment is reserved.') },
+  { key: 'WAITING', short: t('farmer.canonical_stage_2', 'Waiting'), desc: t('farmer.canonical_meaning_2', 'Token active in intake line waiting for inspection counter.') },
+  { key: 'CALLED', short: t('farmer.canonical_stage_3', 'Called'), desc: t('farmer.canonical_meaning_3', 'Proceed to the assigned counter desk.') },
+  { key: 'ARRIVED', short: t('farmer.stage_arrived_short', 'Arrived'), desc: t('farmer.canonical_meaning_4', 'Checked in at the procurement centre security gate.') },
+  { key: 'VERIFICATION', short: t('farmer.canonical_stage_5', 'Verify'), desc: t('farmer.canonical_meaning_5', 'Documents and farmer quota records are being checked.') },
+  { key: 'QUALITY_CHECK', short: t('farmer.canonical_stage_6', 'Quality'), desc: t('farmer.canonical_meaning_6', 'Moisture and FAQ grain standards under verification.') },
+  { key: 'WEIGHING', short: t('farmer.canonical_stage_7', 'Weighing'), desc: t('farmer.canonical_meaning_7', 'Vehicle gross and tare weight recorded on certified weighbridge.') },
+  { key: 'PROCUREMENT_CONFIRMED', short: t('farmer.canonical_stage_8', 'Procured'), desc: t('farmer.canonical_meaning_8', 'Produce accepted and digital procurement receipt issued.') },
+  { key: 'PAYMENT_PROCESSING', short: t('farmer.canonical_stage_9', 'Payment'), desc: t('farmer.canonical_meaning_9', 'Direct Benefit Transfer (DBT) settlement initiated.') },
+  { key: 'PAYMENT_COMPLETED', short: t('farmer.canonical_stage_10', 'Settled'), desc: t('farmer.canonical_meaning_10', 'Procurement complete and funds credited to bank account.') }
 ];
 
 const getBookingStageIndex = (operationalStatus, bookingStatus) => {
-  if (bookingStatus === 'COMPLETED' || operationalStatus === 'COMPLETED') return 7;
-  switch (operationalStatus) {
+  if (bookingStatus === 'COMPLETED' || operationalStatus === 'COMPLETED' || operationalStatus === 'PAYMENT_COMPLETED' || operationalStatus === 'PAID') return 9;
+  const norm = (operationalStatus || '').toUpperCase().replace(/[\s-]+/g, '_');
+  switch (norm) {
     case 'BOOKED': return 0;
-    case 'ARRIVED': return 1;
-    case 'IN QUEUE': return 2;
-    case 'QUALITY CHECK': return 3;
-    case 'WEIGHING': return 4;
-    case 'PROCUREMENT COMPLETE': return 5;
-    case 'PAYMENT PROCESSING': return 6;
-    case 'COMPLETED': return 7;
+    case 'WAITING':
+    case 'IN_QUEUE':
+    case 'QUEUED': return 1;
+    case 'CALLED': return 2;
+    case 'ARRIVED': return 3;
+    case 'VERIFICATION':
+    case 'VERIFY': return 4;
+    case 'QUALITY_CHECK':
+    case 'QUALITY': return 5;
+    case 'WEIGHING':
+    case 'WEIGH': return 6;
+    case 'PROCUREMENT_CONFIRMED':
+    case 'PROCUREMENT_COMPLETE':
+    case 'CONFIRMED': return 7;
+    case 'PAYMENT_PROCESSING': return 8;
+    case 'PAYMENT_COMPLETED':
+    case 'COMPLETED': return 9;
     default: return 0;
   }
 };
@@ -100,11 +113,24 @@ export const MyBookingsPage = () => {
   useEffect(() => {
     fetchBookings();
     fetchQueueStatus();
+
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchBookings();
+        fetchQueueStatus();
+      }
+    }, 4000);
+
+    return () => clearInterval(interval);
   }, []);
 
+  const farmerUserId = user?._id || user?.id;
   const { isConnected } = useSocketQueue({
-    farmerId: user?.id,
-    onQueueUpdate: () => fetchQueueStatus()
+    farmerId: farmerUserId,
+    onQueueUpdate: () => {
+      fetchBookings();
+      fetchQueueStatus();
+    }
   });
 
   const handleCancelBooking = async (bookingId) => {
@@ -118,8 +144,14 @@ export const MyBookingsPage = () => {
     }
   };
 
-  const upcomingBookings = bookings.filter((b) => b.bookingStatus === 'CONFIRMED');
-  const pastBookings = bookings.filter((b) => b.bookingStatus !== 'CONFIRMED');
+  // Active / Upcoming: Any booking that is CONFIRMED or currently undergoing procurement lifecycle
+  const terminalStatuses = ['PAYMENT_COMPLETED', 'COMPLETED', 'CANCELLED', 'REJECTED', 'NO_SHOW'];
+  const upcomingBookings = bookings.filter((b) => {
+    const op = (b.operationalStatus || '').toUpperCase();
+    if (terminalStatuses.includes(op)) return false;
+    return b.bookingStatus === 'CONFIRMED' || !terminalStatuses.includes(b.bookingStatus);
+  });
+  const pastBookings = bookings.filter((b) => !upcomingBookings.includes(b));
 
   const currentList = activeTab === 'UPCOMING' ? upcomingBookings : pastBookings;
 
@@ -295,7 +327,7 @@ export const MyBookingsPage = () => {
                     </div>
                   </div>
 
-                  <StatusIndicator status={booking.bookingStatus === 'CONFIRMED' ? 'WAITING' : booking.bookingStatus} />
+                  <StatusIndicator status={booking.operationalStatus || booking.bookingStatus} />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 my-3 text-xs">
@@ -328,12 +360,14 @@ export const MyBookingsPage = () => {
                 <div className="my-3 p-4 bg-warm-ivory/80 border-2 border-dark-neutral rounded-xs shadow-[2px_2px_0px_#22252A]">
                   <div className="flex items-center justify-between gap-2 mb-3">
                     <span className="text-[10px] font-black uppercase tracking-wider text-dark-neutral">
-                      {t('farmer.workflow_tracker_title', '8-Stage Procurement Workflow Tracker')}
+                      {t('farmer.timeline_title', '10-Stage Procurement & Settlement Progression')}
                     </span>
                     <span className="text-[10px] font-black text-forest-green bg-forest-green-light px-2 py-0.5 rounded-xs border border-forest-green/40">
-                      {t('farmer.stage_of_8', {
+                      {t('farmer.stage_counter', {
+                        defaultValue: 'Stage {{current}} of {{total}} ({{label}})',
                         current: getBookingStageIndex(booking.operationalStatus, booking.bookingStatus) + 1,
-                        label: operationalStages[getBookingStageIndex(booking.operationalStatus, booking.bookingStatus)].short
+                        total: 10,
+                        label: operationalStages[getBookingStageIndex(booking.operationalStatus, booking.bookingStatus)]?.short
                       })}
                     </span>
                   </div>
