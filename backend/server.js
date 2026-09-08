@@ -1,9 +1,14 @@
 const http = require('http');
+const fs = require('fs');
+const path = require('path');
 const jwt = require('jsonwebtoken');
 const { Server } = require('socket.io');
 const env = require('./src/config/env');
 const app = require('./src/app');
 const connectDB = require('./src/config/db');
+
+// Ensure uploads directory exists on Render (ephemeral filesystem) and local dev
+fs.mkdirSync(path.join(__dirname, 'uploads'), { recursive: true });
 
 // Strictly validate required environment configuration on server startup
 env.validateConfig();
